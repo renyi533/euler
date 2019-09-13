@@ -136,11 +136,13 @@ class Embedding(Layer):
     self.built = True
 
   def call(self, inputs):
+    inputs = tf.floormod(inputs, self.max_id + 1)
     shape = inputs.shape
     inputs = tf.reshape(inputs,[-1])
     output_shape = shape.concatenate(self.dim)
     output_shape = [d if d is not None else -1 for d in output_shape.as_list()]
-    return tf.reshape(tf.nn.embedding_lookup(self.embeddings, inputs),output_shape)
+    result = tf.nn.embedding_lookup(self.embeddings, inputs, partition_strategy='div')
+    return tf.reshape(result, output_shape)
 
 
 class SparseEmbedding(Embedding):
@@ -151,7 +153,7 @@ class SparseEmbedding(Embedding):
       self,
       max_id,
       dim,
-      initializer=lambda: tf.truncated_normal_initializer(stddev=0.0002),
+      initializer=lambda: tf.truncated_normal_initializer(stddev=0.04),
       combiner='sum',
       **kwargs):
     super(SparseEmbedding, self).__init__(
@@ -159,5 +161,8 @@ class SparseEmbedding(Embedding):
     self.combiner = combiner
 
   def call(self, inputs):
+    inputs = tf.floormod(inputs, self.max_id + 1)
     return tf.nn.embedding_lookup_sparse(self.embeddings, inputs, None,
-                                         combiner=self.combiner)
+                                         combiner=self.combiner,
+                                         partition_strategy='div') 
+

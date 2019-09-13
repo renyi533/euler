@@ -37,14 +37,16 @@ def start(directory='',
           zk_path='',
           global_sampler_type='node',
           graph_type='compact',
-          server_thread_num=''):
+          server_thread_num='',
+          enable_edge_features='True'):
   euler = threading.Thread(target=_LIB.StartService,
                            args=(str(directory), str(loader_type),
                                  str(hdfs_addr), str(hdfs_port),
                                  str(shard_idx), str(shard_num),
                                  str(zk_addr), str(zk_path),
                                  str(global_sampler_type), str(graph_type),
-                                 str(server_thread_num)))
+                                 str(server_thread_num),
+                                 str(enable_edge_features)))
   euler.daemon = True
   euler.start()
   return euler
@@ -59,10 +61,12 @@ def start_and_wait(directory='',
                    zk_path='',
                    global_sampler_type='node',
                    graph_type='compact',
-                   server_thread_num=''):
+                   server_thread_num='',
+                   enable_edge_features='True'):
   return _LIB.StartService(str(directory), str(loader_type),
                            str(hdfs_addr), str(hdfs_port),
                            str(shard_idx), str(shard_num),
                            str(zk_addr), str(zk_path),
                            str(global_sampler_type), str(graph_type),
-                           str(server_thread_num))
+                           str(server_thread_num),
+                           str(enable_edge_features))

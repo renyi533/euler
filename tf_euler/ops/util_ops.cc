@@ -31,4 +31,17 @@ idx: the input idx vector
 out_idx: the modified idx vector with the same shape
 )doc");
 
+  REGISTER_OP("SparseGather")
+  .Attr("T: {int32,int64,float}")
+  .Input("gather_idx: int64")
+  .Input("sp_indices: int64")
+  .Input("sp_values: T")
+  .Input("dense_shape: int64")
+  .Output("out_sp_indices: int64")
+  .Output("out_sp_values: T")
+  .Output("out_dense_shape: int64")
+  .Doc(R"doc(
+SparseGather is similar to gather op and apply in the first dimension of a 
+sparse tensor. It will return the result sparse tensor.
+)doc");
 } // namespace tensorflow

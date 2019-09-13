@@ -35,7 +35,7 @@ Graph* GetCompactGraph() {
   CompactGraphFactory* factory = new CompactGraphFactory();
   GraphBuilder graph_builder(factory);
   std::vector<std::string> files = {"0.dat", "1.dat"};
-  Graph* graph = graph_builder.BuildGraph(files, local, "", 0, all);
+  Graph* graph = graph_builder.BuildGraph(files, local, "", 0, all, true);
   return graph;
 }
 
@@ -43,7 +43,7 @@ Graph* GetFastGraph() {
   FastGraphFactory* factory = new FastGraphFactory();
   GraphBuilder graph_builder(factory);
   std::vector<std::string> files = {"0.dat", "1.dat"};
-  Graph* graph = graph_builder.BuildGraph(files, local, "", 0, all);
+  Graph* graph = graph_builder.BuildGraph(files, local, "", 0, all, true);
   return graph;
 }
 

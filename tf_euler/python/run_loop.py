@@ -29,6 +29,7 @@ from tf_euler.python import optimizers
 from tf_euler.python.utils import context as utils_context
 from tf_euler.python.utils import hooks as utils_hooks
 from euler.python import service
+from tensorflow.python import debug as tf_debug
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -54,7 +55,8 @@ def define_network_embedding_flags():
 
   tf.flags.DEFINE_string('model', 'graphsage_supervised', 'Embedding model.')
   tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
-  tf.flags.DEFINE_boolean('xent_loss', True, 'Whether to use xent loss.')
+  tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
+  tf.flags.DEFINE_string('unsupervised_loss', 'xent', 'Whether to use xent loss.')
   tf.flags.DEFINE_integer('dim', 256, 'Dimension of embedding.')
   tf.flags.DEFINE_integer('num_negs', 5, 'Number of negative samplings.')
   tf.flags.DEFINE_integer('order', 1, 'LINE order.')
@@ -69,6 +71,7 @@ def define_network_embedding_flags():
                        'Sage aggregator.')
   tf.flags.DEFINE_boolean('concat', True, 'Sage aggregator concat.')
   tf.flags.DEFINE_boolean('use_residual', False, 'Whether use skip connection.')
+  tf.flags.DEFINE_boolean('use_hash_embedding', False, 'Whether use skip connection.')
   tf.flags.DEFINE_float('store_learning_rate', 0.001, 'Learning rate of store.')
   tf.flags.DEFINE_float('store_init_maxval', 0.05,
                         'Max initial value of store.')
@@ -136,6 +139,7 @@ def run_train(model, flags_obj, master, is_chief):
       log_step_count_steps=None,
       hooks=hooks,
       config=config) as sess:
+    #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
     while not sess.should_stop():
       sess.run(train_op)
 
@@ -226,15 +230,19 @@ def run_network_embedding(flags_obj, master, is_chief):
   else:
     metapath = [map(int, flags_obj.all_edge_type)] * len(fanouts)
 
+  print("use_hash_embedding:{}".format(flags_obj.use_hash_embedding))
+
   if flags_obj.model == 'line':
     model = models.LINE(
         node_type=flags_obj.all_node_type,
         edge_type=flags_obj.all_edge_type,
         max_id=flags_obj.max_id,
         dim=flags_obj.dim,
-        xent_loss=flags_obj.xent_loss,
+        loss_type=flags_obj.unsupervised_loss,
         num_negs=flags_obj.num_negs,
-        order=flags_obj.order)
+        order=flags_obj.order,
+        share_negs=flags_obj.share_negs,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
     model = models.Node2Vec(
@@ -242,13 +250,15 @@ def run_network_embedding(flags_obj, master, is_chief):
         edge_type=flags_obj.all_edge_type,
         max_id=flags_obj.max_id,
         dim=flags_obj.dim,
-        xent_loss=flags_obj.xent_loss,
         num_negs=flags_obj.num_negs,
         walk_len=flags_obj.walk_len,
         walk_p=flags_obj.walk_p,
         walk_q=flags_obj.walk_q,
         left_win_size=flags_obj.left_win_size,
-        right_win_size=flags_obj.right_win_size)
+        right_win_size=flags_obj.right_win_size,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
     model = models.SupervisedGCN(
@@ -261,7 +271,8 @@ def run_network_embedding(flags_obj, master, is_chief):
         aggregator=flags_obj.aggregator,
         feature_idx=flags_obj.feature_idx,
         feature_dim=flags_obj.feature_dim,
-        use_residual=flags_obj.use_residual)
+        use_residual=flags_obj.use_residual,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'scalable_gcn':
     model = models.ScalableGCN(
@@ -278,14 +289,15 @@ def run_network_embedding(flags_obj, master, is_chief):
         max_id=flags_obj.max_id,
         use_residual=flags_obj.use_residual,
         store_learning_rate=flags_obj.store_learning_rate,
-        store_init_maxval=flags_obj.store_init_maxval)
+        store_init_maxval=flags_obj.store_init_maxval,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage':
     model = models.GraphSage(
         node_type=flags_obj.train_node_type,
         edge_type=flags_obj.train_edge_type,
         max_id=flags_obj.max_id,
-        xent_loss=flags_obj.xent_loss,
+        loss_type=flags_obj.unsupervised_loss,
         num_negs=flags_obj.num_negs,
         metapath=metapath,
         fanouts=fanouts,
@@ -293,7 +305,9 @@ def run_network_embedding(flags_obj, master, is_chief):
         aggregator=flags_obj.aggregator,
         concat=flags_obj.concat,
         feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim)
+        feature_dim=flags_obj.feature_dim,
+        share_negs=flags_obj.share_negs,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':
     model = models.SupervisedGraphSage(
@@ -307,7 +321,8 @@ def run_network_embedding(flags_obj, master, is_chief):
         aggregator=flags_obj.aggregator,
         concat=flags_obj.concat,
         feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim)
+        feature_dim=flags_obj.feature_dim,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'scalable_sage':
     model = models.ScalableSage(
@@ -319,7 +334,8 @@ def run_network_embedding(flags_obj, master, is_chief):
         feature_idx=flags_obj.feature_idx, feature_dim=flags_obj.feature_dim,
         max_id=flags_obj.max_id,
         store_learning_rate=flags_obj.store_learning_rate,
-        store_init_maxval=flags_obj.store_init_maxval)
+        store_init_maxval=flags_obj.store_init_maxval,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'gat':
     model = models.GAT(
@@ -332,7 +348,8 @@ def run_network_embedding(flags_obj, master, is_chief):
         max_id=flags_obj.max_id,
         head_num=flags_obj.head_num,
         hidden_dim=flags_obj.dim,
-        nb_num=5)
+        nb_num=5,
+        use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'lshne':
     model = models.LsHNE(-1,[[[0,0,0],[0,0,0]]],-1,128,[1,1],[1,1])

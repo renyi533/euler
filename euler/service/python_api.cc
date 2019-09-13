@@ -34,7 +34,8 @@ extern "C" {
       const char* zk_path,
       const char* global_sampler_type,
       const char* graph_type,
-      const char* server_thread_num) {
+      const char* server_thread_num,
+      const char* enable_edge_features) {
     std::unordered_map<std::string, std::string> conf;
     conf["directory"] = directory;
     conf["loader_type"] = loader_type;
@@ -47,6 +48,7 @@ extern "C" {
     conf["global_sampler_type"] = global_sampler_type;
     conf["graph_type"] = graph_type;
     conf["server_thread_num"] = server_thread_num;
+    conf["enable_edge_features"] = enable_edge_features;
     euler::service::StartService(conf);
   }
 }

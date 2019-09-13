@@ -65,5 +65,75 @@ class UtilOpsTest(test.TestCase):
             result = sess.run(op)
             self.assertAllEqual([0, 2, 1, 4, 3], result);
 
+    def testHashFidOp(self):
+        """Test euler hash fid"""
+        v = tf.get_variable("param", [7, 2], dtype=tf.int64, 
+              initializer=tf.constant_initializer([0]))
+        fids = [10, 13, 9, 10]
+        out_fids = ops.euler_hash_fid(v, fids, 2, 4)
+        with tf.Session() as sess:
+            v.initializer.run()
+            result = sess.run(v)
+            self.assertAllEqual([[0, 0], [0, 0], [0, 0], [0, 0],
+                                 [0, 0], [0, 0], [0, 0]], result);
+            result = sess.run(out_fids)
+            self.assertAllEqual([2, 3, 4, 2], result);
+            result = sess.run(v)
+            self.assertAllEqual([[0, 0], [13, 3], [0, 0],[9, 4], 
+                                 [10, 2], [0, 0], [3, 0]], result);
+
+    def testHashFidOpLockFree(self):
+        """Test euler hash fid"""
+        v = tf.get_variable("param", [7, 2], dtype=tf.int64, 
+              initializer=tf.constant_initializer([0]))
+        fids = [10, 13, 9, 10]
+        out_fids = ops.euler_hash_fid(v, fids, 2, 4, use_locking=False)
+        with tf.Session() as sess:
+            v.initializer.run()
+            result = sess.run(v)
+            self.assertAllEqual([[0, 0], [0, 0], [0, 0], [0, 0],
+                                 [0, 0], [0, 0], [0, 0]], result);
+            result = sess.run(out_fids)
+            self.assertAllEqual([2, 3, 4, 2], result);
+            result = sess.run(v)
+            self.assertAllEqual([[0, 0], [13, 3], [0, 0],[9, 4], 
+                                 [10, 2], [0, 0], [3, 0]], result);
+
+    def testHashFidNoPartition(self):
+        """Test hash fid"""
+        fids = tf.cast([10, 13, 9, 10], dtype=tf.dtypes.int64)
+        out_fids = ops.hash_fid(fids, 11)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())           
+            result = sess.run(out_fids)
+            self.assertAllEqual([0, 1, 2, 0], result);
+    
+    def testHashFidNoPartitionLockFree(self):
+        """Test hash fid"""
+        fids = tf.cast([10, 13, 9, 10], dtype=tf.dtypes.int64)
+        out_fids = ops.hash_fid(fids, 11, use_locking=False)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())           
+            result = sess.run(out_fids)
+
+    def testHashFid(self):
+        """Test euler hash fid"""
+        fids = tf.cast([10, 13, 9, 10, 12, 11, 14, 14], dtype=tf.dtypes.int64)
+        out_fids = ops.hash_fid(fids, 11, multiplier=11, partition=3)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())           
+            result = sess.run(out_fids)
+            self.assertAllEqual([3, 4, 0, 3, 1, 6, 7, 7], result);
+
+    def testHashFidLockFree(self):
+        """Test euler hash fid"""
+        fids = tf.cast([10, 13, 9, 10, 12, 11, 14, 14], dtype=tf.dtypes.int64)
+        out_fids = ops.hash_fid(fids, 11, multiplier=11, partition=3, 
+                        use_locking=False)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())           
+            result = sess.run(out_fids)
+            self.assertAllEqual([3, 4, 0, 3, 1, 6, 7, 7], result);
+
 if __name__ == "__main__":
     test.main()

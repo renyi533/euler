@@ -9,7 +9,8 @@ execute_process(COMMAND python -c "import tensorflow as tf; print(tf.sysconfig.g
 execute_process(COMMAND python -c "import tensorflow as tf; print(tf.sysconfig.get_include())" OUTPUT_VARIABLE TF_INC_DIR)
 string(REGEX REPLACE "\n$" "" TF_INC_DIR  "${TF_INC_DIR}")
 string(REGEX REPLACE "\n$" "" TF_LIB_DIR  "${TF_LIB_DIR}")
-
+message(STATUS "tensorflow_lib in: ${TF_LIB_DIR}")
+message(STATUS "tensorflow_inc in: ${TF_INC_DIR}")
 include_directories(SYSTEM ${TF_INC_DIR})
 
 find_library(
@@ -27,10 +28,11 @@ add_library(tf_euler SHARED
             ops/walk_ops.cc
             ops/type_ops.cc
             ops/util_ops.cc
+            ops/hash_ops.cc
 
             kernels/sample_node_op.cc
             kernels/sample_edge_op.cc
-
+            kernels/hash_table_op.cc
             kernels/get_node_type_op.cc
 
             kernels/get_binary_feature_op.cc
@@ -47,7 +49,7 @@ add_library(tf_euler SHARED
             kernels/random_walk_op.cc
             kernels/gen_pair_op.cc
             kernels/inflate_idx_op.cc
-
+            kernels/sparse_gather_op.cc
             utils/create_graph.cc)
 
 target_link_libraries(tf_euler client common ${TF_FRAMEWORK} jemalloc_STATIC_PIC)

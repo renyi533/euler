@@ -18,7 +18,4 @@ from __future__ import division
 from __future__ import print_function
 
 from tf_euler.python.base_layers import Layer, Dense, Embedding, SparseEmbedding
-try:
-  from tf_euler.python.ps_layers import HashEmbedding, HashSparseEmbedding
-except ImportError:
-  pass
+from tf_euler.python.hash_layers import HashEmbedding, HashSparseEmbedding

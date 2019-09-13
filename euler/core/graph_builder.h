@@ -49,17 +49,22 @@ class GraphBuilder {
   Graph* BuildGraph(
       const std::vector<std::string>& file_names,
       LoaderType loader_type, std::string addr, int32_t port,
-      GlobalSamplerType global_sampler_type);
+      GlobalSamplerType global_sampler_type,
+      bool enable_edge_features);
 
  private:
-  bool ParseBlock(euler::common::FileIO* file_io, Graph* graph, int32_t checksum,
-                  NODEVEC &np, EDGEVEC &ep, int32_t& n_type_num, int32_t& e_type_num);
+  bool ParseBlock(euler::common::FileIO* file_io, Graph* graph, 
+                  int32_t checksum, NODEVEC &np, EDGEVEC &ep, 
+                  int32_t& n_type_num, int32_t& e_type_num,
+                  bool enable_edge_features);
 
   bool LoadData(
       LoaderType loader_type,
       const std::vector<std::string>& file_list,
-      Graph* graph, std::string addr, int32_t port,NODEVEC &np, EDGEVEC &ep,
-      int32_t& n_type_num, int32_t& e_type_num);
+      Graph* graph, std::string addr, int32_t port,
+      NODEVEC &np, EDGEVEC &ep,
+      int32_t& n_type_num, int32_t& e_type_num,
+      bool enable_edge_features);
 
  private:
   std::unique_ptr<GraphFactory> factory_;

@@ -52,6 +52,8 @@ bool GraphEngine::Initialize(std::unordered_map<std::string,
       conf["global_sampler_type"] == "node" ? node : (
       conf["global_sampler_type"] == "edge" ? edge : (
       conf["global_sampler_type"] == "none" ? none : all));
+  bool enable_edge_features = conf["enable_edge_features"] != "False";
+
   // using graph builder init graph
   euler::common::FileIOFactory* file_io_factory = nullptr;
   std::function<bool(std::string input)> full_file_filter_fn = {};
@@ -117,7 +119,8 @@ bool GraphEngine::Initialize(std::unordered_map<std::string,
   }
   GraphBuilder graph_builder(graph_factory);
   graph_ = graph_builder.BuildGraph(
-      file_list, loader_type, hdfs_addr, hdfs_port, global_sampler_type);
+      file_list, loader_type, hdfs_addr, hdfs_port, 
+      global_sampler_type, enable_edge_features);
 
   if (graph_ != nullptr) {
     return true;
@@ -135,6 +138,7 @@ bool GraphEngine::Initialize(const std::string& directory) {
   conf["shard_idx"] = "-1";
   conf["shard_num"] = "0";
   conf["global_sampler_type"] = "all";
+  conf["enable_edge_features"] = "True";
   return Initialize(conf);
 }
 

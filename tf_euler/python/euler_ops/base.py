@@ -63,18 +63,25 @@ def initialize_embedded_graph(directory, graph_type='compact'):
 # TODO: Consider lower the concept of shared graph to euler client.
 def initialize_shared_graph(directory, zk_addr, zk_path, shard_idx, shard_num,
                             global_sampler_type='node', graph_type='compact',
-                            server_thread_num=4):
+                            server_thread_num=4, enable_edge_features='True'):
   hdfs_prefix = 'hdfs://'
   if not directory.startswith(hdfs_prefix):
     raise ValueError('Only hdfs graph data is support for shared graph.')
   directory = directory[len(hdfs_prefix):]
-
-  hdfs_addr = directory[:directory.index(':')]
-  directory = directory[len(hdfs_addr):]
-  directory = directory[len(':'):]
-
-  hdfs_port = directory[:directory.index('/')]
-  directory = directory[len(hdfs_port):]
+  
+  if directory.startswith('/'):
+    hdfs_addr = 'default'
+    hdfs_port = '0'
+  elif directory.find(':') != -1:  
+    hdfs_addr = directory[:directory.index(':')]
+    directory = directory[len(hdfs_addr):]
+    directory = directory[len(':'):]
+    hdfs_port = directory[:directory.index('/')]
+    directory = directory[len(hdfs_port):]
+  else:
+    hdfs_addr = directory[:directory.index('/')]
+    directory = directory[len(hdfs_addr):]
+    hdfs_port = '0'
 
   euler.start(directory=directory,
               loader_type='hdfs',
@@ -86,7 +93,8 @@ def initialize_shared_graph(directory, zk_addr, zk_path, shard_idx, shard_num,
               zk_path=zk_path,
               global_sampler_type=global_sampler_type,
               graph_type=graph_type,
-              server_thread_num=server_thread_num)
+              server_thread_num=server_thread_num,
+              enable_edge_features=enable_edge_features)
 
   return initialize_graph({'mode': 'Remote',
                            'zk_server': zk_addr,

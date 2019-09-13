@@ -36,8 +36,8 @@ namespace core {
 class Graph {
  public:
   Graph() {
-    node_map_.reserve(10000000);
-    edge_map_.reserve(10000000);
+    node_map_.reserve(5000000);
+    edge_map_.reserve(500000);
     node_type_num_ = 0;
     edge_type_num_ = 0;
     global_sampler_ok_ = false;
@@ -186,7 +186,7 @@ class Graph {
     if (global_sampler_ok_) {
       return node_weight_sums_;
     } else {
-      LOG(WARNING) << "global sampler is not ok";
+      LOG(WARNING) << "global node sampler is not ok";
       return std::vector<float>();
     }
   }
@@ -195,7 +195,7 @@ class Graph {
     if (global_edge_sampler_ok_) {
       return edge_weight_sums_;
     } else {
-      LOG(WARNING) << "global sampler is not ok";
+      LOG(WARNING) << "global edge sampler is not ok";
       return std::vector<float>();
     }
   }

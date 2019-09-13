@@ -35,6 +35,7 @@ class Node2Vec(base.UnsupervisedModel):
                feature_idx=-1, feature_dim=0, use_id=True,
                sparse_feature_idx=-1, sparse_feature_max_id=-1,
                embedding_dim=16, use_hash_embedding=False, combiner='add',
+               share_negs=False,
                *args, **kwargs):
     super(Node2Vec, self).__init__(
         node_type, edge_type, max_id, *args, **kwargs)
@@ -48,6 +49,7 @@ class Node2Vec(base.UnsupervisedModel):
     self.left_win_size = left_win_size
     self.right_win_size = right_win_size
     self.num_negs = num_negs
+    self.share_negs = share_negs
 
     self.batch_size_ratio = \
         int(euler_ops.gen_pair(tf.zeros([0, walk_len + 1], dtype=tf.int64),
@@ -80,8 +82,7 @@ class Node2Vec(base.UnsupervisedModel):
     src, pos = tf.split(pair, [1, 1], axis=-1)
     src = tf.reshape(src, [batch_size * num_pairs, 1])
     pos = tf.reshape(pos, [batch_size * num_pairs, 1])
-    negs = euler_ops.sample_node(batch_size * num_pairs * self.num_negs,
-                                 self.node_type)
+    negs = euler_ops.sample_node_with_src(tf.reshape(pos, [-1]), self.num_negs, self.share_negs)
     negs = tf.reshape(negs, [batch_size * num_pairs, self.num_negs])
     return src, pos, negs
 

@@ -35,7 +35,7 @@ class ShallowEncoder(layers.Layer):
   def __init__(self, dim=None, feature_idx=-1, feature_dim=0, max_id=-1,
                sparse_feature_idx=-1, sparse_feature_max_id=-1,
                embedding_dim=16, use_hash_embedding=False, combiner='concat',
-               **kwargs):
+               euler_thread_cnt=-1, **kwargs):
     super(ShallowEncoder, self).__init__(**kwargs)
 
     if combiner not in ['add', 'concat']:
@@ -93,7 +93,7 @@ class ShallowEncoder(layers.Layer):
     self.sparse_feature_idx = sparse_feature_idx
     self.sparse_feature_max_id = sparse_feature_max_id
     self.embedding_dim = embedding_dim
-
+    self.euler_thread_cnt = euler_thread_cnt
     # sub-layers
     if dim:
       self.dense = layers.Dense(self.dim, use_bias=False)
@@ -135,7 +135,8 @@ class ShallowEncoder(layers.Layer):
 
     if self.use_feature:
       features = euler_ops.get_dense_feature(
-          inputs, self.feature_idx, self.feature_dim)
+          inputs, self.feature_idx, self.feature_dim, 
+          thread_num=self.euler_thread_cnt)
       features = tf.concat(features, -1)
       if self.combiner == 'add':
         features = self.dense(features)
@@ -144,7 +145,8 @@ class ShallowEncoder(layers.Layer):
     if self.use_sparse_feature:
       default_values = [max_id + 1 for max_id in self.sparse_feature_max_id]
       sparse_features = euler_ops.get_sparse_feature(
-          inputs, self.sparse_feature_idx, default_values=default_values)
+          inputs, self.sparse_feature_idx, default_values=default_values, 
+          thread_num=self.euler_thread_cnt)
       embeddings.extend([
         sparse_embedding(sparse_feature)
         for sparse_embedding, sparse_feature
@@ -175,7 +177,7 @@ class GCNEncoder(layers.Layer):
     super(GCNEncoder, self).__init__(**kwargs)
     self.metapath = metapath
     self.num_layers = len(metapath)
-
+    euler_thread_cnt = 1 if self.num_layers <= 1 else 5
     self.use_residual = use_residual
     self._node_encoder = ShallowEncoder(
         dim=dim if use_residual else None,
@@ -184,7 +186,8 @@ class GCNEncoder(layers.Layer):
         sparse_feature_idx=sparse_feature_idx,
         sparse_feature_max_id=sparse_feature_max_id,
         embedding_dim=embedding_dim, use_hash_embedding=use_hash_embedding,
-        combiner='add' if use_residual else 'concat')
+        combiner='add' if use_residual else 'concat',
+    euler_thread_cnt=euler_thread_cnt)
 
     self.aggregators = []
     aggregator_class = sparse_aggregators.get(aggregator)
@@ -357,6 +360,7 @@ class SageEncoder(layers.Layer):
     self.metapath = metapath
     self.fanouts = fanouts
     self.num_layers = len(metapath)
+
     self.concat = concat
 
     if shared_node_encoder:
@@ -552,7 +556,7 @@ class SparseSageEncoder(SageEncoder):
   def node_encoder(self, inputs):
     default_values = [feature_dim + 1 for feature_dim in self.feature_dims]
     features = euler_ops.get_sparse_feature(
-        inputs, self.feature_ixs, default_values)
+        inputs, self.feature_ixs, default_values=default_values)
     embeddings = [
         sparse_embedding(feature)
         for sparse_embedding, feature in zip(self.sparse_embeddings, features)
@@ -630,3 +634,4 @@ class AttEncoder(layers.Layer):
     out = tf.slice(out, [0, 0, 0], [batch_size, 1, self.out_dim])
     print('out shape', out.shape)
     return tf.reshape(out, [batch_size, self.out_dim])
+

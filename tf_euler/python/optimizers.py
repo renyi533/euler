@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 optimizers = {
-    'sgd': lambda lr: tf.train.MomentumOptimizer(lr, 0.0),
+    'sgd': tf.train.GradientDescentOptimizer,
     'momentum': lambda lr: tf.train.MomentumOptimizer(lr, 0.9),
     'adagrad': tf.train.AdagradOptimizer,
     'adam': tf.train.AdamOptimizer

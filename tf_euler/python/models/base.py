@@ -48,21 +48,24 @@ class UnsupervisedModel(Model):
                edge_type,
                max_id,
                num_negs=5,
-               xent_loss=False,
+               loss_type='xent',
+               share_negs=False,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
     self.edge_type = edge_type
     self.max_id = max_id
     self.num_negs = num_negs
-    self.xent_loss = xent_loss
+    self.loss_type = loss_type
+    self.share_negs = share_negs
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
     src = tf.expand_dims(inputs, -1)
     pos = euler_ops.sample_neighbor(inputs, self.edge_type, 1,
                                     self.max_id + 1)[0]
-    negs = euler_ops.sample_node(batch_size * self.num_negs, self.node_type)
+    negs = euler_ops.sample_node_with_src(tf.reshape(pos,[-1]),
+                    self.num_negs, self.share_negs)
     negs = tf.reshape(negs, [batch_size, self.num_negs])
     return src, pos, negs
 
@@ -83,15 +86,20 @@ class UnsupervisedModel(Model):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
     mrr = self._mrr(logits, neg_logits)
-    if self.xent_loss:
+    if self.loss_type == 'xent':
       true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.ones_like(logits), logits=logits)
       negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.zeros_like(neg_logits), logits=neg_logits)
       loss = tf.reduce_sum(true_xent) + tf.reduce_sum(negative_xent)
+    elif self.loss_type == 'margin':
+      delta = neg_logits + 1 - logits
+      loss = tf.reduce_sum(tf.maximum(delta, 0.0))
     else:
-      neg_cost = tf.reduce_logsumexp(neg_logits, axis=2, keepdims=True)
-      loss = -tf.reduce_sum(logits - neg_cost)
+      assert self.loss_type == 'rank'
+      all_logits = tf.concat([neg_logits, logits], axis=2)
+      all_cost = tf.reduce_logsumexp(all_logits, axis=2, keepdims=True)
+      loss = -tf.reduce_sum(logits - all_cost)
     return loss, mrr
 
   def call(self, inputs):

@@ -207,7 +207,7 @@ class LsHNE(base.UnsupervisedModel):
 
   def feature_embedding_lookup(self,inputs):
     nodes = tf.reshape(inputs,[-1])
-    features = euler_ops.get_sparse_feature(nodes, self.feature_ids,default_values=0)
+    features = euler_ops.get_sparse_feature(nodes, self.feature_ids)
     feature_embs = tf.concat([self.feature_embedding_layer[j](features[i])
         for i, j in enumerate(self.feature_ids)],axis=-1)
     return feature_embs

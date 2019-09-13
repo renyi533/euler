@@ -59,7 +59,7 @@ class FeatureOpsTest(test.TestCase):
 
   def testGetNodeSparseFeature(self):
     """Test get sparse feature for nodes"""
-    op = ops.get_sparse_feature(tf.constant([1, 2, 3, 4], dtype=tf.int64), [0, 1], None, 2)
+    op = ops.get_sparse_feature(tf.constant([1, 2, 3, 4, 1], dtype=tf.int64), [0, 1], thread_num=2, default_values=None)
     with tf.Session() as sess:
       sparse_features = sess.run(op)
       features = [
@@ -67,10 +67,10 @@ class FeatureOpsTest(test.TestCase):
       ]
 
       self.assertAllEqual(
-          [[12341, 56781, 1234, 5678], [12342, 56782, 0, 0], [12343, 56783, 0, 0], [12344, 56784, 0, 0]],
+          [[12341, 56781, 1234, 5678], [12342, 56782, 0, 0], [12343, 56783, 0, 0], [12344, 56784, 0, 0], [12341, 56781, 1234, 5678]],
           features[0])
       self.assertAllEqual(
-          [[8888, 9999], [8888, 9999], [8888, 9999], [8888, 9999]],
+          [[8888, 9999], [8888, 9999], [8888, 9999], [8888, 9999], [8888, 9999]],
           features[1])
 
 
@@ -102,11 +102,11 @@ class FeatureOpsTest(test.TestCase):
 
   def testGetDenseFeature(self):
     """Test get dense feature for nodes"""
-    op = ops.get_dense_feature(tf.constant([1, 2], dtype=tf.int64), [0, 1], [2, 3], 3)
+    op = ops.get_dense_feature(tf.constant([1, 2, 1], dtype=tf.int64), [0, 1], [2, 3], 3)
     with tf.Session() as sess:
       dense_features = sess.run(op)
-      self.assertAllClose([[2.4, 3.6], [2.4, 3.6]], dense_features[0])
-      self.assertAllClose([[4.5, 6.7, 8.9], [4.5, 6.7, 8.9]],
+      self.assertAllClose([[2.4, 3.6], [2.4, 3.6], [2.4, 3.6]], dense_features[0])
+      self.assertAllClose([[4.5, 6.7, 8.9], [4.5, 6.7, 8.9], [4.5, 6.7, 8.9]],
                           dense_features[1])
 
   def testGetEdgeDenseFeature(self):

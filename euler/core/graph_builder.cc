@@ -34,7 +34,8 @@ bool GraphBuilder::LoadData(LoaderType loader_type,
                             const std::vector<std::string>& file_list,
                             Graph* graph, std::string addr, int32_t port,
                             NODEVEC &np, EDGEVEC &ep,
-                            int32_t& n_type_num, int32_t& e_type_num) {
+                            int32_t& n_type_num, int32_t& e_type_num,
+                            bool enable_edge_features) {
   for (size_t i = 0; i < file_list.size(); ++i) {
     euler::common::FileIO* reader = nullptr;
     euler::common::FileIO::ConfigMap config;
@@ -71,7 +72,9 @@ bool GraphBuilder::LoadData(LoaderType loader_type,
     }
     int32_t block_size = 0;
     while (reader->Read(&block_size)) {
-      if (!ParseBlock(reader, graph, block_size, np, ep, n_type_num, e_type_num)) {
+      if (!ParseBlock(reader, graph, block_size, 
+                      np, ep, n_type_num, e_type_num,
+                      enable_edge_features)) {
         LOG(ERROR) << file_list[i] << " data error!";
         return false;
       }
@@ -87,7 +90,8 @@ bool GraphBuilder::LoadData(LoaderType loader_type,
 Graph* GraphBuilder::BuildGraph(const std::vector<std::string>& file_names,
                                 LoaderType loader_type, std::string addr,
                                 int32_t port,
-                                GlobalSamplerType global_sampler_type) {
+                                GlobalSamplerType global_sampler_type,
+                                bool enable_edge_features) {
   int THREAD_NUM = std::thread::hardware_concurrency();
   Graph* graph = factory_->CreateGraph();
   bool load_success = true;
@@ -110,9 +114,11 @@ Graph* GraphBuilder::BuildGraph(const std::vector<std::string>& file_names,
     //LOG(INFO) << "Thread " << i <<  ", job size: " << file_list.size();
     thread_list.push_back(std::thread(
         [this, loader_type, file_list, graph, addr, port,i, &tmp_node_vec, &tmp_edge_vec,
-        &n_type_num, &e_type_num] (bool* success) {
-          *success = *success && LoadData(loader_type, file_list, graph, addr, port, tmp_node_vec[i],
-                                          tmp_edge_vec[i], n_type_num[i], e_type_num[i]);
+        &n_type_num, &e_type_num, enable_edge_features] (bool* success) {
+          *success = *success && LoadData(loader_type, file_list, 
+                                          graph, addr, port, tmp_node_vec[i],
+                                          tmp_edge_vec[i], n_type_num[i], 
+                                          e_type_num[i], enable_edge_features);
         }, &load_success));
   }
   for (int i = 0; i < THREAD_NUM; ++i) {
@@ -144,8 +150,8 @@ Graph* GraphBuilder::BuildGraph(const std::vector<std::string>& file_names,
     graph->SetEdgeTypeNum(e_type_num[i]);
   }
 
-    LOG(INFO) << "Graph Load Finish! Node Count:" << graph->getNodeSize()<< " Edge Count:"
-        << graph->getEdgeSize();
+  LOG(INFO) << "Graph Load Finish! Node Count:" << graph->getNodeSize()<< " Edge Count:"
+      << graph->getEdgeSize();
 
   if (global_sampler_type == node) {
     graph->BuildGlobalSampler();
@@ -158,14 +164,15 @@ Graph* GraphBuilder::BuildGraph(const std::vector<std::string>& file_names,
     graph->BuildGlobalEdgeSampler();
     LOG(INFO) << "Done: build all sampler";
   }
-
+  LOG(INFO) << "enable_edge_features: " << enable_edge_features;
   LOG(INFO) << "Graph build finish";
   return graph;
 }
 
 bool GraphBuilder::ParseBlock(euler::common::FileIO* file_io, Graph* graph,
                               int32_t checksum, NODEVEC &np, EDGEVEC &ep,
-                              int32_t& n_type_num, int32_t& e_type_num) {
+                              int32_t& n_type_num, int32_t& e_type_num,
+                              bool enable_edge_features) {
   int32_t node_info_bytes = 0;
   std::string node_info;
   if (!file_io->Read(&node_info_bytes)) {
@@ -204,9 +211,14 @@ bool GraphBuilder::ParseBlock(euler::common::FileIO* file_io, Graph* graph,
     if (!edge->DeSerialize(edge_info)) {
       return false;
     }
-    ep.push_back(edge);
     int tmp_e = edge->GetType() + 1;
     e_type_num = tmp_e > e_type_num ? tmp_e: e_type_num;
+    if (enable_edge_features) {
+      ep.push_back(edge);
+    }
+    else {
+      delete edge;
+    }
   }
   int32_t total_edges_info_bytes = 0;
   for (size_t i = 0; i < edges_info_bytes.size(); ++i) {
