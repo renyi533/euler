@@ -113,7 +113,7 @@ def get_src_from_file(file_pattern, num_epochs,
                   worker_index,
                   batch_size):
   print("read src ids from file")
-  d = tf.data.Dataset.list_files(file_pattern)
+  d = tf.data.Dataset.list_files(file_pattern, shuffle=False, seed=0)
   if num_workers > 1:
     d = d.shard(num_workers, worker_index)
 
@@ -128,7 +128,7 @@ def get_src_from_file(file_pattern, num_epochs,
   if shuffle_buffer_size > batch_size:
     d = d.shuffle(shuffle_buffer_size)
 
-  d = d.batch(batch_size)  
+  d = d.batch(batch_size).prefetch(1)
   source = d.make_one_shot_iterator().get_next()
   return source
 
