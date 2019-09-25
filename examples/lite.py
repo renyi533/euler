@@ -383,6 +383,9 @@ def run_network_embedding(flags_obj, master, is_chief):
     metapath = [map(int, flags_obj.train_edge_type)] * len(fanouts)
   else:
     metapath = [map(int, flags_obj.all_edge_type)] * len(fanouts)
+  
+  flags_obj.train_edge_type = map(int, flags_obj.train_edge_type)
+  flags_obj.all_edge_type = map(int, flags_obj.all_edge_type)
 
   print("use_hash_embedding:{}".format(flags_obj.use_hash_embedding))
 
