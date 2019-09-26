@@ -141,7 +141,9 @@ class Embedding(Layer):
     inputs = tf.reshape(inputs,[-1])
     output_shape = shape.concatenate(self.dim)
     output_shape = [d if d is not None else -1 for d in output_shape.as_list()]
+    inputs, idx = tf.unique(inputs)
     result = tf.nn.embedding_lookup(self.embeddings, inputs, partition_strategy='div')
+    result = tf.gather(result, idx)
     return tf.reshape(result, output_shape)
 
 
