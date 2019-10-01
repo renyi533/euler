@@ -34,7 +34,7 @@ add_library(tf_euler SHARED
             kernels/sample_edge_op.cc
             kernels/hash_table_op.cc
             kernels/get_node_type_op.cc
-
+            kernels/hash_to_fid_op.cc
             kernels/get_binary_feature_op.cc
             kernels/get_dense_feature_op.cc
             kernels/get_sparse_feature_op.cc

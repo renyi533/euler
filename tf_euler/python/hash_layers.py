@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tf_euler.python.base_layers import Layer, Dense, Embedding, SparseEmbedding
-from tf_euler.python.euler_ops import hash_fid
+from tf_euler.python.euler_ops import hash_fid, hash_fid_v2
 
 class HashSparseEmbedding(SparseEmbedding):
   """
@@ -31,6 +31,7 @@ class HashSparseEmbedding(SparseEmbedding):
       dim,
       initializer=lambda: tf.truncated_normal_initializer(stddev=0.04),
       combiner='sum',
+      erase_hash=None,
       partition=None,
       use_locking=False,
       **kwargs):
@@ -38,10 +39,16 @@ class HashSparseEmbedding(SparseEmbedding):
         max_id=max_id, dim=dim, initializer=initializer, combiner=combiner)
     self.partition = partition
     self.use_locking = use_locking
+    self.erase_hash = erase_hash
   
   def call(self, inputs):
-    n_fids = hash_fid(inputs.values, self.max_id+1, 
+    n_fids = None
+    if self.erase_hash is None:
+      n_fids = hash_fid(inputs.values, self.max_id+1, 
             partition=self.partition, use_locking=self.use_locking)
+    else:
+      n_fids = hash_fid_v2(self.embeddings, inputs.values,
+            erase = self.erase_hash)
 
     new_inputs = tf.SparseTensor(
         indices=inputs.indices,
@@ -57,6 +64,7 @@ class HashEmbedding(Embedding):
       max_id,
       dim,
       initializer=lambda: tf.truncated_normal_initializer(stddev=0.1),
+      erase_hash=None,
       partition=None,
       use_locking=False,
       **kwargs):
@@ -64,12 +72,17 @@ class HashEmbedding(Embedding):
         max_id=max_id, dim=dim, initializer=initializer)
     self.partition = partition
     self.use_locking = use_locking
+    self.erase_hash = erase_hash
   
   def call(self, inputs):
     in_shape = inputs.shape
     inputs = tf.reshape(inputs,[-1])
-    out = hash_fid(inputs, self.max_id+1, 
-            partition=self.partition, use_locking=self.use_locking)
+    if self.erase_hash is None:
+      out = hash_fid(inputs, self.max_id+1, 
+              partition=self.partition, use_locking=self.use_locking)
+    else:
+      out = hash_fid_v2(self.embeddings, inputs,
+              erase = self.erase_hash)
 
     out_shape = [d if d is not None else -1 for d in in_shape.as_list()]
     new_inputs = tf.reshape(out, out_shape)
