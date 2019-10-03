@@ -129,7 +129,7 @@ class UtilOpsTest(test.TestCase):
             result = sess.run(out_fids)
             self.assertAllEqual([0, 1, 2, 0], result);
     
-    def testHashFidV2(self):
+    def testHashFidV2NoPartition(self):
         """Test hash fid"""
         fids = tf.cast([10, 13, 9, 10, 24], dtype=tf.dtypes.int64)
         out_fids = ops.hash_fid_v2(fids, 7, erase=False)
@@ -141,6 +141,19 @@ class UtilOpsTest(test.TestCase):
             self.assertAllEqual([3,6,2,3,4], result);
             result = sess.run(out_fids2)
             self.assertAllEqual([6, 4], result);
+
+    def testHashFidV2(self):
+        """Test hash fid"""
+        fids = tf.cast([10, 13, 9, 10, 24], dtype=tf.dtypes.int64)
+        out_fids = ops.hash_fid_v2(fids, 7, partition=2, erase=False)
+        rm_fids = tf.cast([13, 24], dtype=tf.dtypes.int64)
+        out_fids2 = ops.hash_fid_v2(rm_fids, 7, partition=2, erase=True)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())           
+            result = sess.run(out_fids)
+            self.assertAllEqual([1,4,5,1,0], result);
+            result = sess.run(out_fids2)
+            self.assertAllEqual([4, 0], result);
 
     def testHashFidV3NoPartition(self):
         """Test hash fid"""

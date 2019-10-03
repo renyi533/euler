@@ -17,14 +17,23 @@ sparse_gather = base._LIB_OP.sparse_gather
 euler_hash_fid = base._LIB_OP.euler_hash_fid
 euler_hash_fid_v2 = base._LIB_OP.hash_to_fid
 
-def hash_fid_v2(fids, hash_space,  erase=False):
+def hash_fid_v2(fids, hash_space, partition=None, erase=False):
   with tf.variable_scope('hash_fids', 
                          reuse=tf.AUTO_REUSE):
-    param = tf.get_variable('hash_param',
-                            [hash_space],
-                            dtype=tf.int64,
-                            trainable=False,
-                            initializer=tf.constant_initializer([0]))
+    if partition is None:
+      param = tf.get_variable('hash_param',
+                              [hash_space],
+                              dtype=tf.int64,
+                              trainable=False,
+                              initializer=tf.constant_initializer([0]))
+    else:
+      param = tf.get_variable('hash_param',
+                              [hash_space],
+                              dtype=tf.int64,
+                              trainable=False,
+                              partitioner=tf.fixed_size_partitioner(partition, axis=0),
+                              initializer=tf.constant_initializer([0]))
+
 
   params = param
   if isinstance(param, variables.PartitionedVariable):
@@ -55,7 +64,7 @@ def hash_fid_v2(fids, hash_space,  erase=False):
       pids = gather_ids[p]
       with tf.colocate_with(params[p]):
         result = euler_hash_fid_v2(params[p], pids, start, erase=erase)
-        start = start + param_size[p]
+        start = start + tf.shape(params[p], out_type=tf.dtypes.int64)[0]
       partitioned_result.append(result)
     ret = tf.dynamic_stitch(pindices, 
                             partitioned_result)
