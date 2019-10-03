@@ -47,7 +47,7 @@ class HashSparseEmbedding(SparseEmbedding):
       n_fids = hash_fid(inputs.values, self.max_id+1, 
             partition=self.partition, use_locking=self.use_locking)
     else:
-      n_fids = hash_fid_v2(self.embeddings, inputs.values,
+      n_fids = hash_fid_v2(inputs.values, self.max_id+1,
             erase = self.erase_hash)
 
     new_inputs = tf.SparseTensor(
@@ -81,7 +81,7 @@ class HashEmbedding(Embedding):
       out = hash_fid(inputs, self.max_id+1, 
               partition=self.partition, use_locking=self.use_locking)
     else:
-      out = hash_fid_v2(self.embeddings, inputs,
+      out = hash_fid_v2(inputs, self.max_id+1,
               erase = self.erase_hash)
 
     out_shape = [d if d is not None else -1 for d in in_shape.as_list()]

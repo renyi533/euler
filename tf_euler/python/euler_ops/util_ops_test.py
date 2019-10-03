@@ -129,14 +129,12 @@ class UtilOpsTest(test.TestCase):
             result = sess.run(out_fids)
             self.assertAllEqual([0, 1, 2, 0], result);
     
-    def testHashFidV2NoPartition(self):
+    def testHashFidV2(self):
         """Test hash fid"""
         fids = tf.cast([10, 13, 9, 10, 24], dtype=tf.dtypes.int64)
-        v = tf.get_variable('param', [7, 5], dtype=tf.dtypes.float32,
-                            initializer=tf.constant_initializer([0]))
-        out_fids = ops.hash_fid_v2(v, fids, erase=False)
+        out_fids = ops.hash_fid_v2(fids, 7, erase=False)
         rm_fids = tf.cast([13, 24], dtype=tf.dtypes.int64)
-        out_fids2 = ops.hash_fid_v2(v, rm_fids, erase=True)
+        out_fids2 = ops.hash_fid_v2(rm_fids, 7, erase=True)
         with tf.Session() as sess:
             sess.run(tf.initializers.global_variables())           
             result = sess.run(out_fids)
@@ -144,17 +142,32 @@ class UtilOpsTest(test.TestCase):
             result = sess.run(out_fids2)
             self.assertAllEqual([6, 4], result);
 
-    def testHashFidV2(self):
+    def testHashFidV3NoPartition(self):
+        """Test hash fid"""
+        fids = tf.cast([10, 13, 9, 10, 24], dtype=tf.dtypes.int64)
+        v = tf.get_variable('param', [7, 5], dtype=tf.dtypes.float32,
+                            initializer=tf.constant_initializer([0]))
+        out_fids = ops.hash_fid_v3(v, fids, erase=False)
+        rm_fids = tf.cast([13, 24], dtype=tf.dtypes.int64)
+        out_fids2 = ops.hash_fid_v3(v, rm_fids, erase=True)
+        with tf.Session() as sess:
+            sess.run(tf.initializers.global_variables())
+            result = sess.run(out_fids)
+            self.assertAllEqual([3,6,2,3,4], result);
+            result = sess.run(out_fids2)
+            self.assertAllEqual([6, 4], result);
+
+    def testHashFidV3(self):
         """Test hash fid"""
         fids = tf.cast([10, 13, 9, 10, 24], dtype=tf.dtypes.int64)
         v = tf.get_variable('param', [7, 5], dtype=tf.dtypes.float32,
                             partitioner=tf.fixed_size_partitioner(2),
                             initializer=tf.constant_initializer([0]))
-        out_fids = ops.hash_fid_v2(v, fids, erase=False)
+        out_fids = ops.hash_fid_v3(v, fids, erase=False)
         rm_fids = tf.cast([13, 24], dtype=tf.dtypes.int64)
-        out_fids2 = ops.hash_fid_v2(v, rm_fids, erase=True)
+        out_fids2 = ops.hash_fid_v3(v, rm_fids, erase=True)
         with tf.Session() as sess:
-            sess.run(tf.initializers.global_variables())           
+            sess.run(tf.initializers.global_variables())
             result = sess.run(out_fids)
             self.assertAllEqual([1,4,5,1,0], result);
             result = sess.run(out_fids2)
