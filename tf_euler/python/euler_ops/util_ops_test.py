@@ -101,7 +101,7 @@ class UtilOpsTest(test.TestCase):
 
     def testHashToFidOp(self):
         """Test euler hash fid"""
-        v = tf.get_variable("param", [7], dtype=tf.int64, 
+        v = tf.get_variable("param", [7,1], dtype=tf.int64, 
               initializer=tf.constant_initializer([0]))
         fids = [10, 13, 9, 10, 24]
         erase_fids = [13, 24]
@@ -110,15 +110,15 @@ class UtilOpsTest(test.TestCase):
         with tf.Session() as sess:
             v.initializer.run()
             result = sess.run(v)
-            self.assertAllEqual([0,0,0,0,0,0,0], result);
+            self.assertAllEqual([[0],[0],[0],[0],[0],[0],[0]], result);
             result = sess.run(out_fids)
             self.assertAllEqual([5, 8, 4, 5, 6], result);
             result = sess.run(v)
-            self.assertAllEqual([0, 0, 9, 10, 24, 0, 13], result)
+            self.assertAllEqual([[0], [0], [9], [10], [24], [0], [13]], result)
             result = sess.run(out_fids2)
             self.assertAllEqual([8, 6], result);
             result = sess.run(v)
-            self.assertAllEqual([0, 0, 9, 10, 0, 0, 0], result)
+            self.assertAllEqual([[0], [0], [9], [10], [0], [0], [0]], result)
 
     def testHashFidNoPartition(self):
         """Test hash fid"""

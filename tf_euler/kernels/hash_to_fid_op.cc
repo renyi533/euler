@@ -35,9 +35,11 @@ class HashToFidOp : public OpKernel {
 
     OP_REQUIRES(c, params.IsInitialized(),
               errors::FailedPrecondition("Null ref for params"));
-    OP_REQUIRES(c, TensorShapeUtils::IsVector(params.shape()),
-              errors::InvalidArgument("params must be 1-D, got shape: ",
+    OP_REQUIRES(c, TensorShapeUtils::IsMatrix(params.shape()),
+              errors::InvalidArgument("params must be 2-D, got shape: ",
                                       params.shape().DebugString()));
+    OP_REQUIRES(c, params.shape().dim_size(1) == 1,
+              errors::InvalidArgument("params must be 2-D with 1 column"));
 
     Tensor *out_fids_tensor = nullptr;
     OP_REQUIRES_OK(c,

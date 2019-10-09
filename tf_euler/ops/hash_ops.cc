@@ -30,7 +30,7 @@ REGISTER_OP("HashToFid")
     .Output("output_fids: int64")
     .SetShapeFn([](InferenceContext* c) {
       ShapeHandle x;
-      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 1, &x));
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 2, &x));
       TF_RETURN_IF_ERROR(c->WithRank(c->input(1), 1, &x));
       TF_RETURN_IF_ERROR(c->WithRank(c->input(2), 0, &x));
       c->set_output(0, c->input(1));

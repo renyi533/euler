@@ -22,13 +22,13 @@ def hash_fid_v2(fids, hash_space, partition=None, erase=False):
                          reuse=tf.AUTO_REUSE):
     if partition is None:
       param = tf.get_variable('hash_param',
-                              [hash_space],
+                              [hash_space,1],
                               dtype=tf.int64,
                               trainable=False,
                               initializer=tf.constant_initializer([0]))
     else:
       param = tf.get_variable('hash_param',
-                              [hash_space],
+                              [hash_space,1],
                               dtype=tf.int64,
                               trainable=False,
                               partitioner=tf.fixed_size_partitioner(partition, axis=0),
@@ -42,7 +42,7 @@ def hash_fid_v2(fids, hash_space, partition=None, erase=False):
     params = [params]
 
   orig_fids = fids
-  fids, idx = tf.unique(fids, out_idx=tf.dtypes.int64)
+  fids, idx = tf.unique(fids, out_idx=tf.dtypes.int32)
   ret = None
   np = len(params)
   if np == 1:
@@ -87,7 +87,7 @@ def hash_fid_v3(v, fids, erase=False):
       with tf.colocate_with(var[i]):
         param_size.append(var[i].get_shape()[0])
         param = tf.get_variable('hash_param_%d' % (i),
-                                [param_size[i]],
+                                [param_size[i],1],
                                 dtype=tf.int64,
                                 trainable=False,
                                 initializer=tf.constant_initializer([0]))
