@@ -59,40 +59,40 @@ class NeighborOpsTest(test.TestCase):
 
   def testGetFullNeighbor(self):
     """Test get full neighbors for nodes"""
-    op = ops.get_full_neighbor([1, 2], [0, 1])
+    op = ops.get_full_neighbor([1, 2, 1], [0, 1])
     with tf.Session() as sess:
       sparse_ids, sparse_weights, sparse_types = sess.run(op)
       ids = sess.run(tf.sparse_tensor_to_dense(sparse_ids))
       weights = sess.run(tf.sparse_tensor_to_dense(sparse_weights))
       types = sess.run(tf.sparse_tensor_to_dense(sparse_types))
-      self.assertAllEqual([[2, 4, 3], [3, 5, 0]], ids)
-      self.assertAllClose([[2.0, 4.0, 3.0], [3.0, 5.0, 0.0]], weights)
-      self.assertAllEqual([[0, 0, 1], [1, 1, 0]], types)
+      self.assertAllEqual([[2, 4, 3], [3, 5, 0], [2, 4, 3]], ids)
+      self.assertAllClose([[2.0, 4.0, 3.0], [3.0, 5.0, 0.0], [2.0, 4.0, 3.0]], weights)
+      self.assertAllEqual([[0, 0, 1], [1, 1, 0], [0, 0, 1]], types)
 
   def testGetSortedFullNeighbor(self):
     """Test get sorted full neighbors for nodes"""
-    op = ops.get_sorted_full_neighbor([1, 2], [0, 1])
+    op = ops.get_sorted_full_neighbor([1, 2, 1], [0, 1])
     with tf.Session() as sess:
       sparse_ids, sparse_weights, sparse_types = sess.run(op)
       ids = sess.run(tf.sparse_tensor_to_dense(sparse_ids))
       weights = sess.run(tf.sparse_tensor_to_dense(sparse_weights))
       types = sess.run(tf.sparse_tensor_to_dense(sparse_types))
-      self.assertAllEqual([[2, 3, 4], [3, 5, 0]], ids)
-      self.assertAllClose([[2.0, 3.0, 4.0], [3.0, 5.0, 0.0]], weights)
-      self.assertAllEqual([[0, 1, 0], [1, 1, 0]], types)
+      self.assertAllEqual([[2, 3, 4], [3, 5, 0], [2, 3, 4]], ids)
+      self.assertAllClose([[2.0, 3.0, 4.0], [3.0, 5.0, 0.0], [2.0, 3.0, 4.0]], weights)
+      self.assertAllEqual([[0, 1, 0], [1, 1, 0], [0, 1, 0]], types)
 
   def testGetTopKNeighbor(self):
     """Test get top k neighbor for nodes"""
-    op = ops.get_top_k_neighbor([1, 2], [0, 1], 2)
+    op = ops.get_top_k_neighbor([1, 2, 1], [0, 1], 2)
     with tf.Session() as sess:
       ids, weights, types = sess.run(op)
-      self.assertAllEqual([[4, 3], [5, 3]], ids)
-      self.assertAllClose([[4.0, 3.0], [5.0, 3.0]], weights)
-      self.assertAllEqual([[0, 1], [1, 1]], types)
+      self.assertAllEqual([[4, 3], [5, 3], [4, 3]], ids)
+      self.assertAllClose([[4.0, 3.0], [5.0, 3.0], [4.0, 3.0]], weights)
+      self.assertAllEqual([[0, 1], [1, 1], [0, 1]], types)
 
   def testSampleNeighbor(self):
     """Test Sample Neighbor for nodes"""
-    op = ops.sample_neighbor([1, 2], [0, 1], 10)
+    op = ops.sample_neighbor([1, 2, 1], [0, 1], 10)
     with tf.Session() as sess:
       ids, weights, types = sess.run(op)
       self.assertEqual(10, len(ids[0]))
@@ -107,6 +107,13 @@ class NeighborOpsTest(test.TestCase):
       [self.assertTrue(int(w2) in [3, 5]) for w2 in weights[1]]
       [self.assertTrue(t2 in [0, 1] for t2 in types[1])]
 
+      [self.assertTrue(n1 in [2, 3, 4]) for n1 in ids[2]]
+      [self.assertTrue(int(w1) in [2, 3, 4]) for w1 in weights[2]]
+      [self.assertTrue(t1 in [0, 1] for t1 in types[2])]
+
+      self.assertEqual(ids[0].all(), ids[2].all())
+      self.assertEqual(weights[0].all(), weights[2].all())
+      self.assertEqual(types[0].all(), types[2].all())
 
 if __name__ == "__main__":
   test.main()

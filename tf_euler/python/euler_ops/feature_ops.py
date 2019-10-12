@@ -23,8 +23,7 @@ from tf_euler.python.euler_ops import base
 
 def _get_thread_num(data, thread_num):
   if thread_num <= 0:
-    thread_num = tf.maximum(tf.shape(data)[0] // 3000, 1)
-    thread_num = tf.minimum(thread_num, 5)
+    thread_num = 1
   return thread_num
 
 def _iter_body(i, state):
@@ -45,6 +44,8 @@ def _split_input_data(data_list, thread_num):
                      lambda: ta_final.write(thread_num-1, tf.reshape(-1,[1,1])) )
   split_dims = tf.reshape(ta_final.concat(), [thread_num])
   
+  if split_dims.get_shape()[0] is None:
+    split_dims = 1
   split_data_list = tf.split(data_list, split_dims, axis=0)
   return split_data_list
 
@@ -79,7 +80,7 @@ def get_sparse_feature(nodes, feature_ids, thread_num=1, default_values=None):
     A list of `SparseTensor` with the same length as `feature_ids`.
   """
   uniq_nodes, orig_idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
-  thread_num = _get_thread_num(nodes, thread_num)
+  thread_num = _get_thread_num(uniq_nodes, thread_num)
   uniq_sp_features = _get_sparse_feature(uniq_nodes, feature_ids,
                              base._LIB_OP.get_sparse_feature, thread_num, default_values)
   sp_features = [base._LIB_OP.sparse_gather(orig_idx, t.indices, t.values, t.dense_shape) \
@@ -126,7 +127,7 @@ def get_dense_feature(nodes, feature_ids, dimensions, thread_num=1):
   """
   uniq_nodes, orig_idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
 
-  thread_num = _get_thread_num(nodes, thread_num)
+  thread_num = _get_thread_num(uniq_nodes, thread_num)
 
   uniq_features = _get_dense_feature(uniq_nodes, feature_ids, dimensions,
             base._LIB_OP.get_dense_feature, thread_num)

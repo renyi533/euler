@@ -114,6 +114,7 @@ REGISTER_OP("GetTopKNeighbor")
           dims.emplace_back(c->MakeDim(k));
           c->set_output(0, c->MakeShape(dims));
           c->set_output(1, c->MakeShape(dims));
+          c->set_output(2, c->MakeShape(dims));
 
           return Status::OK();})
     .Doc(R"doc(
@@ -152,6 +153,7 @@ REGISTER_OP("SampleNeighbor")
           dims.emplace_back(c->MakeDim(count));
           c->set_output(0, c->MakeShape(dims));
           c->set_output(1, c->MakeShape(dims));
+          c->set_output(2, c->MakeShape(dims));
 
           return Status::OK();})
     .Doc(R"doc(

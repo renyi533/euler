@@ -21,9 +21,67 @@ import tensorflow as tf
 
 from tf_euler.python.euler_ops import base
 
-sample_neighbor = base._LIB_OP.sample_neighbor
-get_top_k_neighbor = base._LIB_OP.get_top_k_neighbor
+def get_top_k_neighbor(nodes, edge_types, k, default_node=-1, dedup=True):
+  """
+  Sample multi-hop neighbors of nodes according to weight in graph.
 
+  Args:
+    nodes: A 1-D `Tensor` of `int64`.
+    edge_types: A list of 1-D `Tensor` of int32. Specify edge types to filter
+      outgoing edges 
+    k: how many neighbors to be retrieved for each node
+    default_node: A `int`. Specify the node id to fill when there is no neighbor
+    dedup: whether dedup nodes before query
+  Return:
+    neighbors: sampled neighbors with shape of [batch_size, counts]
+    weights: sampled neighbors' weights with shape of [batch_size, counts]
+    types: neighbors sampled from which edge types with shape of [batch_size, counts]
+  """
+  nodes = tf.to_int64(nodes)
+  if dedup == False:
+    return base._LIB_OP.get_top_k_neighbor(nodes, edge_types, k=k, 
+            default_node=default_node)
+  else:
+    uniq_nodes, idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
+    neighbors, weights, types = base._LIB_OP.get_top_k_neighbor(uniq_nodes,
+                                                                edge_types,
+                                                                k=k,
+                                                                default_node=default_node)
+    neighbors = tf.gather(neighbors, idx, axis=0)
+    weights = tf.gather(weights, idx, axis=0)
+    types = tf.gather(types, idx, axis=0)
+    return neighbors, weights, types     
+
+def sample_neighbor(nodes, edge_types, count, default_node=-1, dedup=True):
+  """
+  Sample multi-hop neighbors of nodes according to weight in graph.
+
+  Args:
+    nodes: A 1-D `Tensor` of `int64`.
+    edge_types: A list of 1-D `Tensor` of int32. Specify edge types to filter
+      outgoing edges
+    count: how many neighbors to be sampled for each node
+    default_node: A `int`. Specify the node id to fill when there is no neighbor
+    dedup: whether dedup nodes before query
+  Return:
+    neighbors: sampled neighbors with shape of [batch_size, counts]
+    weights: sampled neighbors' weights with shape of [batch_size, counts]
+    types: neighbors sampled from which edge types with shape of [batch_size, counts]
+  """
+  nodes = tf.to_int64(nodes)
+  if dedup == False:
+    return base._LIB_OP.sample_neighbor(nodes, edge_types, count=count, 
+            default_node=default_node)
+  else:
+    uniq_nodes, idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
+    neighbors, weights, types = base._LIB_OP.sample_neighbor(uniq_nodes,
+                                                             edge_types,
+                                                             count=count,
+                                                             default_node=default_node)
+    neighbors = tf.gather(neighbors, idx, axis=0)
+    weights = tf.gather(weights, idx, axis=0)
+    types = tf.gather(types, idx, axis=0)
+    return neighbors, weights, types     
 
 def get_full_neighbor(nodes, edge_types):
   """
@@ -38,9 +96,12 @@ def get_full_neighbor(nodes, edge_types):
       weights: A `SparseTensor` of `float`.
       types: A `SparseTensor` of `int32`
   """
-  sp_returns = base._LIB_OP.get_full_neighbor(nodes, edge_types)
-  return tf.SparseTensor(*sp_returns[:3]), tf.SparseTensor(*sp_returns[3:6]), \
-         tf.SparseTensor(*sp_returns[6:])
+  nodes = tf.to_int64(nodes)
+  uniq_nodes, idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
+  sp_returns = base._LIB_OP.get_full_neighbor(uniq_nodes, edge_types)
+  return tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[:3])), \
+         tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[3:6])),\
+         tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[6:]))
 
 
 def get_sorted_full_neighbor(nodes, edge_types):
@@ -56,10 +117,12 @@ def get_sorted_full_neighbor(nodes, edge_types):
       weights: A `SparseTensor` of `float`.
       types: A `SparseTensor` of `int32`
   """
-  sp_returns = base._LIB_OP.get_sorted_full_neighbor(nodes, edge_types)
-  return tf.SparseTensor(*sp_returns[:3]), tf.SparseTensor(*sp_returns[3:6]), \
-         tf.SparseTensor(*sp_returns[6:])
-
+  nodes = tf.to_int64(nodes)
+  uniq_nodes, idx = tf.unique(nodes, out_idx=tf.dtypes.int64)
+  sp_returns = base._LIB_OP.get_sorted_full_neighbor(uniq_nodes, edge_types)
+  return tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[:3])), \
+         tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[3:6])),\
+         tf.SparseTensor(*base._LIB_OP.sparse_gather(idx, *sp_returns[6:]))
 
 def sample_fanout(nodes, edge_types, counts, default_node=-1):
   """
