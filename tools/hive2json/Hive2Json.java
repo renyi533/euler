@@ -87,12 +87,10 @@ public class Hive2Json {
                       Reporter reporter) throws IOException {
         List<String> words = new ArrayList<>();
         String line = value.toString();
-        StringTokenizer tokenizer = new StringTokenizer(line, "\t");
-        while (tokenizer.hasMoreTokens()) {
-           words.add(tokenizer.nextToken());
-        }
-        while (words.size() < 5) {
-            words.add("");
+        String[] items= line.split("\t", -1);
+        int i = 0;
+        while (i < items.length) {
+           words.add(items[i++]);
         }
         String from_id = words.get(0);
         if (!from_id.equals("from_id")) {
