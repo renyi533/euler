@@ -1,15 +1,16 @@
 #encoding=utf8
+#please use data.yiren.euler:v1.10 as base docker image
 import tensorflow as tf
 import numpy as np
 import math
 import pickle
 import time
 
-from lag_lite.tensorflow import env
+from lite.tensorflow import env
 tf_conf = env.parse_tf_config()
-from lag_lite.tensorflow import aop
-from lag_lite.common import JOB_CONTEXT
-from lag_lite.tensorflow import train as lite_train
+from lite.tensorflow import aop
+from lite.common import JOB_CONTEXT
+from lite.tensorflow import train as lite_train
 
 from tf_euler.python import euler_ops
 from tf_euler.python import layers
@@ -17,6 +18,9 @@ from tf_euler.python import models
 from tf_euler.python import optimizers
 from tf_euler.python.utils import context as utils_context
 from tf_euler.python.utils import hooks as utils_hooks
+from asym_graphsage import AsymGraphSage
+from signed_line import SignedLINE
+from signed_asym_graphsage import SignedAsymGraphSage
 from euler.python import service
 import euler
 
@@ -38,12 +42,12 @@ tf.flags.DEFINE_enum('mode', 'train',
 
 tf.flags.DEFINE_string('graph_data_dir', 'hdfs://haruna/ss_ml/recommend/lvkefan/data/binary/output18', 'Euler graph data.')
 tf.flags.DEFINE_integer('train_node_type', 0, 'Node type of training set.')
-tf.flags.DEFINE_integer('all_node_type', euler_ops.ALL_NODE_TYPE,
-                        'Node type of the whole graph.')
+
 tf.flags.DEFINE_list('train_edge_type', [0], 'Edge type of training set.')
-tf.flags.DEFINE_list('all_edge_type', [0, 1, 2],
-                    'Edge type of the whole graph.')
+tf.flags.DEFINE_list('train_neg_edge_type', [1], 'Edge type of training set.')
+
 tf.flags.DEFINE_integer('max_id', 818795160, 'Max node id.')
+tf.flags.DEFINE_integer('context_max_id', 818795160, 'Max node id.')
 tf.flags.DEFINE_integer('feature_idx', -1, 'Feature index.')
 tf.flags.DEFINE_integer('feature_dim', 50, 'Feature dimension.')
 tf.flags.DEFINE_integer('label_idx', 0, 'Label index.')
@@ -68,7 +72,7 @@ tf.flags.DEFINE_list('fanouts', [10,5], 'GCN fanouts.')
 tf.flags.DEFINE_enum('aggregator', 'mean',
                     ['gcn', 'mean', 'meanpool', 'maxpool', 'attention'],
                     'Sage aggregator.')
-tf.flags.DEFINE_boolean('concat', True, 'Sage aggregator concat.')
+tf.flags.DEFINE_boolean('concat', False, 'Sage aggregator concat.')
 tf.flags.DEFINE_boolean('use_residual', False, 'Whether use skip connection.')
 tf.flags.DEFINE_boolean('use_hash_embedding', False, 'Whether use skip connection.')
 tf.flags.DEFINE_float('store_learning_rate', 0.001, 'Learning rate of store.')
@@ -165,24 +169,46 @@ def run_train(model, flags_obj, master, is_chief):
                                batch_size)
   else:
     print("sampling src ids from graph")
-    if flags_obj.model == 'line' or flags_obj.model == 'randomwalk':
-      source = euler_ops.sample_node(
-          count=batch_size, node_type=flags_obj.all_node_type)
-    else:
-      source = euler_ops.sample_node(
+    
+    source = euler_ops.sample_node(
           count=batch_size, node_type=flags_obj.train_node_type)
+
     source.set_shape([batch_size])
   
   curr_emb, loss, metric_name, metric = model(source)
   global_step = tf.train.get_or_create_global_step()
 
   optimizer_class = optimizers.get(flags_obj.optimizer)
+  dense_optimizer_class = optimizers.get('adagrad')
   decayed_lr = tf.train.exponential_decay(flags_obj.learning_rate, 
                   global_step, decay_steps=int(1e6/flags_obj.batch_size),
                   decay_rate=flags_obj.lr_decay_rate)
   tf.summary.scalar('learning_rate', decayed_lr)
   optimizer = optimizer_class(decayed_lr)
-  train_op = optimizer.minimize(loss, global_step=global_step)
+  dense_optimizer = dense_optimizer_class(flags_obj.learning_rate)
+
+  emb_vars = []
+  dense_vars = []
+  for t_var in tf.trainable_variables():
+    if t_var.name.find('embedding') != -1:
+      emb_vars.append(t_var)
+    else:
+      dense_vars.append(t_var)
+
+  print('embedding vars:')
+  for t_var in emb_vars:
+    print(t_var, t_var.device)
+
+  print('dense vars:')
+  for t_var in dense_vars:
+    print(t_var, t_var.device)
+
+  train_op = optimizer.minimize(loss, var_list=emb_vars, global_step=global_step)
+
+  if len(dense_vars) > 0:
+    print('group dense and emb optimizer')
+    dense_train_op = dense_optimizer.minimize(loss, var_list=dense_vars)
+    train_op = tf.group(dense_train_op,train_op)
 
   hooks = []
   chief_only_hooks = []
@@ -377,23 +403,32 @@ def get_cluster_spec(ps_hosts, worker_hosts, task_idx, is_ps=True):
   return cluster
 
 def run_network_embedding(flags_obj, master, is_chief):
-  
   fanouts = map(int, flags_obj.fanouts)
-  if flags_obj.mode == 'train':
-    metapath = [map(int, flags_obj.train_edge_type)] * len(fanouts)
-  else:
-    metapath = [map(int, flags_obj.all_edge_type)] * len(fanouts)
   
-  flags_obj.train_edge_type = map(int, flags_obj.train_edge_type)
-  flags_obj.all_edge_type = map(int, flags_obj.all_edge_type)
-
+  metapath = [map(int, flags_obj.train_edge_type)] * len(fanouts)
+  flags_obj.train_edge_type=map(int, flags_obj.train_edge_type)
+  flags_obj.train_neg_edge_type = map(int, flags_obj.train_neg_edge_type)
   print("use_hash_embedding:{}".format(flags_obj.use_hash_embedding))
 
   if flags_obj.model == 'line':
     model = models.LINE(
-        node_type=flags_obj.all_node_type,
-        edge_type=flags_obj.all_edge_type,
+        node_type=flags_obj.train_node_type,
+        edge_type=flags_obj.train_edge_type,
         max_id=flags_obj.max_id,
+        dim=flags_obj.dim,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        num_negs=flags_obj.num_negs,
+        use_hash_embedding=flags_obj.use_hash_embedding,
+        order=flags_obj.order)
+
+  elif flags_obj.model == 'signed_line':
+    model = SignedLINE(
+        node_type=flags_obj.train_node_type,
+        edge_type=flags_obj.train_edge_type,
+        neg_edge_type=flags_obj.train_neg_edge_type,
+        max_id=flags_obj.max_id,
+        context_max_id=flags_obj.context_max_id,
         dim=flags_obj.dim,
         loss_type=flags_obj.unsupervised_loss,
         share_negs=flags_obj.share_negs,
@@ -404,7 +439,7 @@ def run_network_embedding(flags_obj, master, is_chief):
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
     model = models.Node2Vec(
         node_type=flags_obj.all_node_type,
-        edge_type=flags_obj.all_edge_type,
+        edge_type=flags_obj.train_edge_type,
         max_id=flags_obj.max_id,
         dim=flags_obj.dim,
         loss_type=flags_obj.unsupervised_loss,
@@ -416,40 +451,46 @@ def run_network_embedding(flags_obj, master, is_chief):
         use_hash_embedding=flags_obj.use_hash_embedding,
         left_win_size=flags_obj.left_win_size,
         right_win_size=flags_obj.right_win_size)
-
-  elif flags_obj.model in ['gcn', 'gcn_supervised']:
-    model = models.SupervisedGCN(
-        label_idx=flags_obj.label_idx,
-        label_dim=flags_obj.label_dim,
-        num_classes=flags_obj.num_classes,
-        sigmoid_loss=flags_obj.sigmoid_loss,
-        metapath=metapath,
-        dim=flags_obj.dim,
-        aggregator=flags_obj.aggregator,
-        feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim,
-        use_residual=flags_obj.use_residual,
-        use_hash_embedding=flags_obj.use_hash_embedding)
-
-  elif flags_obj.model == 'scalable_gcn':
-    model = models.ScalableGCN(
-        label_idx=flags_obj.label_idx,
-        label_dim=flags_obj.label_dim,
-        num_classes=flags_obj.num_classes,
-        sigmoid_loss=flags_obj.sigmoid_loss,
-        edge_type=metapath[0],
-        num_layers=len(fanouts),
-        dim=flags_obj.dim,
-        aggregator=flags_obj.aggregator,
-        feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim,
+        
+  elif flags_obj.model == 'AsymGraphSage':
+    model = AsymGraphSage(
+        node_type=flags_obj.train_node_type,
+        edge_type=flags_obj.train_edge_type,
         max_id=flags_obj.max_id,
+        context_max_id=flags_obj.context_max_id,
         use_id=True,
-        use_residual=flags_obj.use_residual,
-        store_learning_rate=flags_obj.store_learning_rate,
-        store_init_maxval=flags_obj.store_init_maxval,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        num_negs=flags_obj.num_negs,
+        metapath=metapath,
+        fanouts=fanouts,
+        dim=flags_obj.dim,
+        embedding_dim=flags_obj.dim,
+        aggregator=flags_obj.aggregator,
+        concat=flags_obj.concat,
+        feature_idx=flags_obj.feature_idx,
+        feature_dim=flags_obj.feature_dim,
         use_hash_embedding=flags_obj.use_hash_embedding)
-
+  elif flags_obj.model == 'SignedAsymGraphSage':
+    model = SignedAsymGraphSage(
+        node_type=flags_obj.train_node_type,
+        edge_type=flags_obj.train_edge_type,
+        neg_edge_type=flags_obj.train_neg_edge_type,
+        max_id=flags_obj.max_id,
+        context_max_id=flags_obj.context_max_id,
+        use_id=True,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        num_negs=flags_obj.num_negs,
+        metapath=metapath,
+        fanouts=fanouts,
+        dim=flags_obj.dim,
+        embedding_dim=flags_obj.dim,
+        aggregator=flags_obj.aggregator,
+        concat=flags_obj.concat,
+        feature_idx=flags_obj.feature_idx,
+        feature_dim=flags_obj.feature_dim,
+        use_hash_embedding=flags_obj.use_hash_embedding)
   elif flags_obj.model == 'graphsage':
     model = models.GraphSage(
         node_type=flags_obj.train_node_type,
@@ -469,50 +510,6 @@ def run_network_embedding(flags_obj, master, is_chief):
         feature_dim=flags_obj.feature_dim,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
-  elif flags_obj.model == 'graphsage_supervised':
-    model = models.SupervisedGraphSage(
-        label_idx=flags_obj.label_idx,
-        label_dim=flags_obj.label_dim,
-        num_classes=flags_obj.num_classes,
-        sigmoid_loss=flags_obj.sigmoid_loss,
-        metapath=metapath,
-        fanouts=fanouts,
-        dim=flags_obj.dim,
-        aggregator=flags_obj.aggregator,
-        concat=flags_obj.concat,
-        feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim,
-        use_hash_embedding=flags_obj.use_hash_embedding)
-
-  elif flags_obj.model == 'scalable_sage':
-    model = models.ScalableSage(
-        label_idx=flags_obj.label_idx, label_dim=flags_obj.label_dim,
-        num_classes=flags_obj.num_classes, sigmoid_loss=flags_obj.sigmoid_loss,
-        edge_type=metapath[0], fanout=fanouts[0], num_layers=len(fanouts),
-        dim=flags_obj.dim,
-        aggregator=flags_obj.aggregator, concat=flags_obj.concat,
-        feature_idx=flags_obj.feature_idx, feature_dim=flags_obj.feature_dim,
-        max_id=flags_obj.max_id,
-        store_learning_rate=flags_obj.store_learning_rate,
-        store_init_maxval=flags_obj.store_init_maxval,
-        use_hash_embedding=flags_obj.use_hash_embedding)
-
-  elif flags_obj.model == 'gat':
-    model = models.GAT(
-        label_idx=flags_obj.label_idx,
-        label_dim=flags_obj.label_dim,
-        num_classes=flags_obj.num_classes,
-        sigmoid_loss=flags_obj.sigmoid_loss,
-        feature_idx=flags_obj.feature_idx,
-        feature_dim=flags_obj.feature_dim,
-        max_id=flags_obj.max_id,
-        head_num=flags_obj.head_num,
-        hidden_dim=flags_obj.dim,
-        nb_num=5,
-        use_hash_embedding=flags_obj.use_hash_embedding)
-
-  elif flags_obj.model == 'lshne':
-    model = models.LsHNE(-1,[[[0,0,0],[0,0,0]]],-1,128,[1,1],[1,1])
   else:
     raise ValueError('Unsupported network embedding model.')
 
