@@ -19,6 +19,7 @@ class SignedUnsupervisedModel(base.Model):
                neg_edge_type,
                max_id,
                context_max_id,
+               split_emb=False,
                num_negs=5,
                loss_type='xent',
                share_negs=False,
@@ -33,6 +34,7 @@ class SignedUnsupervisedModel(base.Model):
     self.num_negs = num_negs
     self.loss_type = loss_type
     self.share_negs = share_negs
+    self.split_emb = split_emb
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -89,12 +91,27 @@ class SignedUnsupervisedModel(base.Model):
     embedding = self.target_encoder(src)
     embedding_pos = self.context_encoder(pos)
     embedding_pos_negs = self.context_encoder(pos_negs)
-    embedding_neg = -self.context_encoder(neg)
-    embedding_neg_negs = -self.context_encoder(neg_negs)
+    embedding_neg = self.context_encoder(neg)
+    embedding_neg_negs = self.context_encoder(neg_negs)
     
-    embedding = tf.concat([embedding, embedding], axis=0)
-    embedding_pos = tf.concat([embedding_pos, embedding_neg], axis=0)
-    embedding_negs = tf.concat([embedding_pos_negs, embedding_neg_negs], axis=0)
+    if not self.split_emb:
+      print("no split emb for signed models")
+      embedding_neg = -embedding_neg
+      embedding_neg_negs = -embedding_neg_negs
+      embedding = tf.concat([embedding, embedding], axis=0)
+      embedding_pos = tf.concat([embedding_pos, embedding_neg], axis=0)
+      embedding_negs = tf.concat([embedding_pos_negs, embedding_neg_negs], axis=0)
+    else:
+      print("split emb for signed models")
+      emb1, emb2 = tf.split(embedding, num_or_size_splits=2, axis=-1)
+      embedding_pos, _ = tf.split(embedding_pos, num_or_size_splits=2, axis=-1)
+      embedding_pos_negs, _ = tf.split(embedding_pos_negs, num_or_size_splits=2, axis=-1)
+      _, embedding_neg = tf.split(embedding_neg, num_or_size_splits=2, axis=-1)
+      _, embedding_neg_negs = tf.split(embedding_neg_negs, num_or_size_splits=2, axis=-1)
+      embedding = tf.concat([emb1, emb2], axis=0)
+      embedding_pos = tf.concat([embedding_pos, embedding_neg], axis=0)
+      embedding_negs = tf.concat([embedding_pos_negs, embedding_neg_negs], axis=0)
+
 
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
     embedding = self.target_encoder(inputs)

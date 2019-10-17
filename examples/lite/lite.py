@@ -24,17 +24,13 @@ from signed_asym_graphsage import SignedAsymGraphSage
 from euler.python import service
 import euler
 
-# 天级、小时级数据的 HDFS 文件路径将以该命令行参数传入
 tf.app.flags.DEFINE_string('train_paths', '', 'HDFS paths to input files.')
 
-# Kafka 流式数据的 Cluster 和 Topic 信息将以如下两个命令行参数传入
 tf.app.flags.DEFINE_string('kafka_cluster', '', 'Kafka cluster to read.')
 tf.app.flags.DEFINE_string('kafka_topic', '', 'Kafka topic to read.')
 
-# 本次程序运行，必须往该 HDFS 目录至少写一个文件
 tf.app.flags.DEFINE_string('model_path', '', 'Where to write output files.')
 
-# 如果单个训练任务会触发多次程序运行，如分 Part 训练或天级/小时级更新，上一次成功的运行对应的 model_path 将通过如下命令行参数传入
 tf.app.flags.DEFINE_string('last_model_path', '', 'Model path for the previous run.')
 
 tf.flags.DEFINE_enum('mode', 'train',
@@ -58,6 +54,7 @@ tf.flags.DEFINE_string('src_id_file', None, 'Files containing ids to evaluate.')
 tf.flags.DEFINE_string('model', 'graphsage_supervised', 'Embedding model.')
 tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
 tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
+tf.flags.DEFINE_boolean('split_emb_signed_model', False, 'Whether to share negs in a mini-batch.')
 tf.flags.DEFINE_enum('unsupervised_loss', 'xent', 
                     ['xent', 'rank', 'margin'], 'unsupervised loss.')
 tf.flags.DEFINE_integer('dim', 32, 'Dimension of embedding.')
@@ -434,7 +431,8 @@ def run_network_embedding(flags_obj, master, is_chief):
         share_negs=flags_obj.share_negs,
         num_negs=flags_obj.num_negs,
         use_hash_embedding=flags_obj.use_hash_embedding,
-        order=flags_obj.order)
+        order=flags_obj.order,
+        split_emb=flags_obj.split_emb_signed_model)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
     model = models.Node2Vec(
@@ -490,7 +488,9 @@ def run_network_embedding(flags_obj, master, is_chief):
         concat=flags_obj.concat,
         feature_idx=flags_obj.feature_idx,
         feature_dim=flags_obj.feature_dim,
-        use_hash_embedding=flags_obj.use_hash_embedding)
+        use_hash_embedding=flags_obj.use_hash_embedding,
+        split_emb=flags_obj.split_emb_signed_model)
+        
   elif flags_obj.model == 'graphsage':
     model = models.GraphSage(
         node_type=flags_obj.train_node_type,
