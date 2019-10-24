@@ -113,6 +113,8 @@ public class Hive2Json {
 
    public static void main(String[] args) throws Exception {
      JobConf conf = new JobConf(Hive2Json.class);
+     String extraArgs[] = new GenericOptionsParser(conf, args).getRemainingArgs();
+     
      conf.setJobName("hive2json");
      
      conf.setJarByClass(Hive2Json.class);
@@ -126,10 +128,15 @@ public class Hive2Json {
 
      conf.setInputFormat(TextInputFormat.class);
      conf.setOutputFormat(TextOutputFormat.class);
-	 conf.setNumReduceTasks(1000);
+	 conf.setNumReduceTasks(5000);
 
-     FileInputFormat.setInputPaths(conf, new Path(args[0]));
-     FileOutputFormat.setOutputPath(conf, new Path(args[1]));
+     if (extraArgs.length < 2) {
+       System.out.println("Please specify input/output directories");
+       return;
+     }
+                            
+     FileInputFormat.setInputPaths(conf, new Path(extraArgs[0]));
+     FileOutputFormat.setOutputPath(conf, new Path(extraArgs[1]));
 
      JobClient.runJob(conf);
    }
