@@ -436,7 +436,7 @@ def run_network_embedding(flags_obj, master, is_chief):
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
     model = models.Node2Vec(
-        node_type=flags_obj.all_node_type,
+        node_type=flags_obj.train_node_type,
         edge_type=flags_obj.train_edge_type,
         max_id=flags_obj.max_id,
         dim=flags_obj.dim,
