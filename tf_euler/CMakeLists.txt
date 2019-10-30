@@ -2,7 +2,8 @@ if (BUILD_COVERAGE)
   set(CMAKE_CXX_FLAGS "-g -O0 --coverage")
   set (CMAKE_EXE_LINKER_FLAGS "--coverage")
 ENDIF(BUILD_COVERAGE)
-
+SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bsymbolic")
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
 # Add tensorflow framework
 
 execute_process(COMMAND python -c "import tensorflow as tf; print(tf.sysconfig.get_lib())" OUTPUT_VARIABLE TF_LIB_DIR)
