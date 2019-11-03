@@ -41,6 +41,8 @@ tf.flags.DEFINE_integer('train_node_type', 0, 'Node type of training set.')
 
 tf.flags.DEFINE_list('train_edge_type', [0], 'Edge type of training set.')
 tf.flags.DEFINE_list('train_neg_edge_type', [1], 'Edge type of training set.')
+tf.flags.DEFINE_list('train_restore_params', None, 'params to be restored from checkpoint for training. default to load all')
+
 
 tf.flags.DEFINE_integer('max_id', 818795160, 'Max node id.')
 tf.flags.DEFINE_integer('context_max_id', 818795160, 'Max node id.')
@@ -232,7 +234,7 @@ def run_train(model, flags_obj, master, is_chief):
       tf.train.ProfilerHook(save_secs=600))
   
   saver = tf.train.Saver(max_to_keep=10, sharded=True)
-  
+
   chief_only_hooks.append(tf.train.CheckpointSaverHook(save_secs=1200,
                         saver=saver, checkpoint_dir=flags_obj.model_path))
 
@@ -257,7 +259,27 @@ def run_train(model, flags_obj, master, is_chief):
   print("trainable variables:")
   for t_var in tf.trainable_variables():
     print(t_var, t_var.device)
+
+  restore_saver = None
+  restore_ckpt_path = None
+  if flags_obj.train_restore_params is not None:
+    restore_vars = []
+    for v in tf.global_variables():
+      for e in flags_obj.train_restore_params:
+        if v.name.find(e) != -1:
+          restore_vars.append(v)
+          break
+
+    print("restore variables:")
+    for t_var in restore_vars:
+      print(t_var, t_var.device)
     
+    assert len(restore_vars) > 0
+    restore_saver = tf.train.Saver(var_list=restore_vars, sharded=True)
+    restore_ckpt_path = restore_path
+    restore_path = None
+    print('original ckpt: %s. reset to none for MonitoredTrainingSession' % restore_ckpt_path)
+
   with tf.train.MonitoredTrainingSession(
       master=master,
       is_chief=is_chief,
@@ -270,6 +292,15 @@ def run_train(model, flags_obj, master, is_chief):
       save_summaries_steps=None,
       save_summaries_secs=None,
       config=get_config_proto(flags_obj.task_index)) as sess:
+    if is_chief and restore_ckpt_path is not None:
+      ckpt = tf.train.get_checkpoint_state(restore_ckpt_path)
+      if ckpt and ckpt.model_checkpoint_path:
+        print('will perform partial restore from :%s' % ckpt.model_checkpoint_path)
+        restore_saver.restore(sess, ckpt.model_checkpoint_path)
+        print('partial restore done')
+      else:
+        print('no ckpt. will not perform partial restore')  
+      
     while not sess.should_stop():
       sess.run(train_op)
 
