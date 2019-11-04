@@ -276,9 +276,12 @@ def run_train(model, flags_obj, master, is_chief):
     
     assert len(restore_vars) > 0
     restore_saver = tf.train.Saver(var_list=restore_vars, sharded=True)
-    restore_ckpt_path = restore_path
-    restore_path = None
-    print('original ckpt: %s. reset to none for MonitoredTrainingSession' % restore_ckpt_path)
+    if flags_obj.model_path == restore_path:
+      print('flags_obj.model_path == restore_path. perform full restore instead.')
+    else:
+      restore_ckpt_path = restore_path
+      restore_path = None
+      print('original ckpt: %s. reset to none for MonitoredTrainingSession' % restore_ckpt_path)
 
   with tf.train.MonitoredTrainingSession(
       master=master,
