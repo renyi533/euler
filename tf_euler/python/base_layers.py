@@ -163,8 +163,13 @@ class SparseEmbedding(Embedding):
     self.combiner = combiner
 
   def call(self, inputs):
-    inputs = tf.floormod(inputs, self.max_id + 1)
-    return tf.nn.embedding_lookup_sparse(self.embeddings, inputs, None,
+    n_fids = tf.floormod(inputs.values, self.max_id + 1)
+
+    new_inputs = tf.SparseTensor(
+            indices=inputs.indices,
+            values=n_fids, dense_shape=inputs.dense_shape)
+                    
+    return tf.nn.embedding_lookup_sparse(self.embeddings, new_inputs, None,
                                          combiner=self.combiner,
                                          partition_strategy='div') 
 
