@@ -1,5 +1,4 @@
 #encoding=utf8
-#please use data.yiren.euler:v1.10 as base docker image
 import tensorflow as tf
 import numpy as np
 import math
@@ -23,6 +22,7 @@ from signed_line import SignedLINE
 from signed_asym_graphsage import SignedAsymGraphSage
 from euler.python import service
 import euler
+from util import get_top_neighbor
 
 tf.app.flags.DEFINE_string('train_paths', '', 'HDFS paths to input files.')
 
@@ -34,7 +34,7 @@ tf.app.flags.DEFINE_string('model_path', '', 'Where to write output files.')
 tf.app.flags.DEFINE_string('last_model_path', '', 'Model path for the previous run.')
 
 tf.flags.DEFINE_enum('mode', 'train',
-                    ['train', 'evaluate', 'save_embedding','pending'], 'Run mode.')
+                    ['train', 'evaluate', 'save_embedding','pending', 'similar_neighbor'], 'Run mode.')
 
 tf.flags.DEFINE_string('graph_data_dir', 'hdfs://haruna/ss_ml/recommend/lvkefan/data/binary/output18', 'Euler graph data.')
 tf.flags.DEFINE_integer('train_node_type', 0, 'Node type of training set.')
@@ -43,6 +43,7 @@ tf.flags.DEFINE_list('train_edge_type', [0], 'Edge type of training set.')
 tf.flags.DEFINE_list('train_neg_edge_type', [1], 'Edge type of training set.')
 tf.flags.DEFINE_list('train_restore_params', None, 'params to be restored from checkpoint for training. default to load all')
 
+tf.flags.DEFINE_boolean('skip_self', True, '')
 
 tf.flags.DEFINE_integer('max_id', 818795160, 'Max node id.')
 tf.flags.DEFINE_integer('context_max_id', 818795160, 'Max node id.')
@@ -78,6 +79,7 @@ tf.flags.DEFINE_float('store_learning_rate', 0.001, 'Learning rate of store.')
 tf.flags.DEFINE_float('store_init_maxval', 0.05,
                     'Max initial value of store.')
 tf.flags.DEFINE_integer('head_num', 1, 'multi head attention num')
+tf.flags.DEFINE_integer('similar_node_count', 10, '')
 
 tf.flags.DEFINE_integer('batch_size', 512, 'Mini-batch size.')
 tf.flags.DEFINE_string('optimizer', 'adam', 'Optimizer to use.')
@@ -320,6 +322,7 @@ def run_evaluate(model, flags_obj, master, is_chief):
                                flags_obj.task_index,
                                flags_obj.batch_size)
   else:
+    assert (not flags_obj.use_hash_embedding)
     source = get_src_from_range(flags_obj.max_id, 
                                1,
                                0, 
@@ -349,7 +352,7 @@ def run_evaluate(model, flags_obj, master, is_chief):
       hooks=hooks,
       config=get_config_proto(flags_obj.task_index)) as sess:
     while not sess.should_stop():
-      loss_val, metric_val = sess.run(loss, metric)
+      loss_val, metric_val = sess.run([loss, metric])
 
   print('{}: {}, {}: {}'.format(metric_name, metric_val, 'loss', loss_val))
   print("evaluation done")
@@ -365,6 +368,7 @@ def run_save_embedding(model, flags_obj, master, is_chief):
                                flags_obj.task_index,
                                flags_obj.batch_size)
   else:
+    assert (not flags_obj.use_hash_embedding)
     source = get_src_from_range(flags_obj.max_id, 
                                1,
                                0, 
@@ -418,6 +422,90 @@ def run_save_embedding(model, flags_obj, master, is_chief):
         embedding_file.write('\n')
   
   print("save embedding done")
+
+def run_similar_neighbor(flags_obj, master, is_chief):
+  utils_context.training = False
+
+  if flags_obj.src_id_file is not None:
+    source = get_src_from_file(flags_obj.src_id_file, 
+                               1,
+                               0, 
+                               len(flags_obj.worker_hosts), 
+                               flags_obj.task_index,
+                               flags_obj.batch_size)
+  else:
+    assert (not flags_obj.use_hash_embedding)
+    source = get_src_from_range(flags_obj.max_id, 
+                               1,
+                               0, 
+                               len(flags_obj.worker_hosts), 
+                               flags_obj.task_index,
+                               flags_obj.batch_size)
+  
+  paths = []
+  for _ in range(flags_obj.num_epochs):
+    path = euler_ops.random_walk(
+        source, [flags_obj.train_edge_type] * flags_obj.walk_len,
+        p=flags_obj.walk_p,
+        q=flags_obj.walk_q,
+        default_node=flags_obj.max_id + 1)
+    
+    paths.append(path)
+  
+  path = tf.concat(paths, axis=1)
+
+  top_neighbor = get_top_neighbor(path, source, 
+                                  flags_obj.max_id + 1, 
+                                  flags_obj.similar_node_count,
+                                  flags_obj.skip_self)
+    
+  global_step = tf.train.get_or_create_global_step()
+  
+  hooks = []
+  hooks.append(lite_train.ThroughputMetricHook())
+  chief_only_hooks=[]
+  chief_only_hooks.append(
+      tf.train.ProfilerHook(save_secs=600))
+  if master:
+    embedding_filename = 'similar_node_{}.txt'.format(flags_obj.task_index)
+  else:
+    embedding_filename = 'similar_node.txt'
+
+  tf.gfile.MakeDirs(FLAGS.model_path)
+
+  embedding_filename = flags_obj.model_path + '/' + embedding_filename
+
+  with tf.train.MonitoredTrainingSession(
+      master=master,
+      is_chief=is_chief,
+      checkpoint_dir=flags_obj.last_model_path,
+      save_checkpoint_secs=None,
+      log_step_count_steps=None,
+      hooks=hooks,
+      chief_only_hooks=chief_only_hooks,
+      config=get_config_proto(flags_obj.task_index)) as sess, \
+      tf.gfile.GFile(embedding_filename, 'w') as top_neighbor_file:
+    while not sess.should_stop():
+      id_, top_neighbor_val = sess.run([source, top_neighbor])
+
+      dim_0 = top_neighbor_val.shape[0]
+      for idx in range(dim_0):
+        top_neighbor_file.write(str(id_[idx]))
+        top_neighbor_file.write('\t')
+
+        for j in range(top_neighbor_val.shape[2]):
+          if j > 0:
+            top_neighbor_file.write(' ')
+          top_neighbor_file.write(str(top_neighbor_val[idx][0][j]))
+        top_neighbor_file.write('\t')
+
+        for j in range(top_neighbor_val.shape[2]):
+          if j > 0:
+            top_neighbor_file.write(' ')
+          top_neighbor_file.write(str(top_neighbor_val[idx][1][j]))
+        top_neighbor_file.write('\n')
+  
+  print("top_neighbor_generation done")
 
 def get_cluster_spec(ps_hosts, worker_hosts, task_idx, is_ps=True):
   cluster = None
@@ -553,6 +641,8 @@ def run_network_embedding(flags_obj, master, is_chief):
     run_evaluate(model, flags_obj, master, is_chief)
   elif flags_obj.mode =='save_embedding':
     run_save_embedding(model, flags_obj, master, is_chief)
+  elif flags_obj.mode =='similar_neighbor':
+    run_similar_neighbor(flags_obj, master, is_chief)
   elif flags_obj.mode =='pending':
     while True:
       time.sleep(60)
