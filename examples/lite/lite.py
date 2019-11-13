@@ -453,14 +453,14 @@ def run_similar_neighbor(flags_obj, master, is_chief):
     paths.append(path)
   
   path = tf.concat(paths, axis=1)
-
+    
   top_neighbor = get_top_neighbor(path, source, 
                                   flags_obj.max_id + 1, 
                                   flags_obj.similar_node_count,
                                   flags_obj.skip_self)
-    
+                                    
   global_step = tf.train.get_or_create_global_step()
-  
+  step_update = tf.assign_add(global_step, 1)                                  
   hooks = []
   hooks.append(lite_train.ThroughputMetricHook())
   chief_only_hooks=[]
@@ -480,14 +480,19 @@ def run_similar_neighbor(flags_obj, master, is_chief):
       is_chief=is_chief,
       checkpoint_dir=flags_obj.last_model_path,
       save_checkpoint_secs=None,
+      save_checkpoint_steps=None,
+      save_summaries_steps=None,
+      save_summaries_secs=None,
       log_step_count_steps=None,
       hooks=hooks,
       chief_only_hooks=chief_only_hooks,
       config=get_config_proto(flags_obj.task_index)) as sess, \
       tf.gfile.GFile(embedding_filename, 'w') as top_neighbor_file:
     while not sess.should_stop():
-      id_, top_neighbor_val = sess.run([source, top_neighbor])
+      id_, top_neighbor_val, step = sess.run([source, top_neighbor, step_update])
 
+      if step % 20 == 0:
+        print('step: %d' % step)
       dim_0 = top_neighbor_val.shape[0]
       for idx in range(dim_0):
         top_neighbor_file.write(str(id_[idx]))
