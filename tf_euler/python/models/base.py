@@ -106,7 +106,12 @@ class UnsupervisedModel(Model):
     src, pos, negs = self.to_sample(inputs)
     embedding = self.target_encoder(src)
     embedding_pos = self.context_encoder(pos)
-    embedding_negs = self.context_encoder(negs)
+    negs_1d = tf.reshape(negs, [-1])
+    uniq_negs, idx = tf.unique(negs_1d)
+    embedding_negs = self.context_encoder(uniq_negs)
+    embedding_negs = tf.gather(embedding_negs, idx, axis=0)
+    embedding_negs = tf.reshape(embedding_negs,
+                                [tf.shape(embedding)[0],self.num_negs,-1]) 
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
     embedding = self.target_encoder(inputs)
     return ModelOutput(
