@@ -27,6 +27,7 @@ using shape_inference::DimensionHandle;
 REGISTER_OP("GenPair")
     .Input("paths: int64")
     .Output("pairs: int64")
+    .Output("distance: int64")
     .Attr("left_win_size: int")
     .Attr("right_win_size: int")
     .SetShapeFn(
@@ -60,6 +61,10 @@ REGISTER_OP("GenPair")
           dims.emplace_back(c->MakeDim(2));
           c->set_output(0, c->MakeShape(dims));
 
+          std::vector<DimensionHandle> dims2;
+          dims2.emplace_back(c->MakeDim(batch_size));
+          dims2.emplace_back(c->MakeDim(pair_count));
+          c->set_output(1, c->MakeShape(dims2));
           return Status::OK();})
     .Doc(R"doc(
 GenPair.

@@ -65,6 +65,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_float('walk_q', 1., 'Node2Vec in-out parameter.')
   tf.flags.DEFINE_integer('left_win_size', 5, 'Left window size.')
   tf.flags.DEFINE_integer('right_win_size', 5, 'Right window size.')
+  tf.flags.DEFINE_integer('skip_len', 0, 'walklets skip len.')
   tf.flags.DEFINE_list('fanouts', [10, 10], 'GCN fanouts.')
   tf.flags.DEFINE_enum('aggregator', 'mean',
                        ['gcn', 'mean', 'meanpool', 'maxpool', 'attention'],
@@ -250,6 +251,23 @@ def run_network_embedding(flags_obj, master, is_chief):
         edge_type=flags_obj.all_edge_type,
         max_id=flags_obj.max_id,
         dim=flags_obj.dim,
+        num_negs=flags_obj.num_negs,
+        walk_len=flags_obj.walk_len,
+        walk_p=flags_obj.walk_p,
+        walk_q=flags_obj.walk_q,
+        left_win_size=flags_obj.left_win_size,
+        right_win_size=flags_obj.right_win_size,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        use_hash_embedding=flags_obj.use_hash_embedding)
+
+  elif flags_obj.model == "walklets":
+    model = models.Walklets(
+        node_type=flags_obj.all_node_type,
+        edge_type=flags_obj.all_edge_type,
+        max_id=flags_obj.max_id,
+        dim=flags_obj.dim,
+        skip_len=flags_obj.skip_len,
         num_negs=flags_obj.num_negs,
         walk_len=flags_obj.walk_len,
         walk_p=flags_obj.walk_p,

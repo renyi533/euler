@@ -58,14 +58,19 @@ class WalkOpsTest(test.TestCase):
     })
 
   def testGenPair(self):
-    op = ops.gen_pair([[1, 2, 3, 4, 5, 6, 7, 8, 9]], 2, 2)
+    op, dis = ops.gen_pair([[1, 2, 3, 4, 5, 6, 7, 8, 9]], 2, 2)
     with tf.Session() as sess:
-      pairs = sess.run(op)
+      pairs, distance = sess.run([op, dis])
       self.assertAllEqual(
           [[[1, 2], [1, 3], [2, 1], [2, 3], [2, 4], [3, 2], [3, 1], [3, 4],
             [3, 5], [4, 3], [4, 2], [4, 5], [4, 6], [5, 4], [5, 3], [5, 6],
             [5, 7], [6, 5], [6, 4], [6, 7], [6, 8], [7, 6], [7, 5], [7, 8],
             [7, 9], [8, 7], [8, 6], [8, 9], [9, 8], [9, 7]]], pairs)
+      self.assertAllEqual(
+          [[0, 1, 0, 0, 1, 0, 1, 0,
+            1, 0, 1, 0, 1, 0, 1, 0,
+            1, 0, 1, 0, 1, 0, 1, 0,
+            1, 0, 1, 0, 0, 1]], distance)
 
   def testRandomWalk(self):
     op = ops.random_walk([1, 2], [1 for _ in range(10)], 10, 1.0, 2.0)

@@ -21,6 +21,7 @@ from tf_euler.python.models.base import SupervisedModel, ModelOutput
 from tf_euler.python.models.lasgnn import LasGNN
 from tf_euler.python.models.line import LINE
 from tf_euler.python.models.node2vec import Node2Vec
+from tf_euler.python.models.walklets import Walklets
 from tf_euler.python.models.gcn import SupervisedGCN, ScalableGCN
 from tf_euler.python.models.graphsage import GraphSage, SupervisedGraphSage, \
                                              ScalableSage

@@ -56,7 +56,12 @@ void GenPair::Compute(OpKernelContext* ctx) {
 
   std::vector<std::vector<int64>> pairs(batch_size);
   for (auto& pair : pairs) {
-    pair.reserve(path_len * (left_win_size_ + right_win_size_));
+    pair.reserve(path_len * (left_win_size_ + right_win_size_) * 2);
+  }
+
+  std::vector<std::vector<int64>> distance_vec(batch_size);
+  for (auto& distance : distance_vec) {
+    distance.reserve(path_len * (left_win_size_ + right_win_size_));
   }
 
   auto paths_data = paths.flat<int64>().data();
@@ -67,6 +72,7 @@ void GenPair::Compute(OpKernelContext* ctx) {
       while ((j - k - 1) >= 0 && k < left_win_size_) {
         pairs[i].push_back(path[j]);
         pairs[i].push_back(path[j - k - 1]);
+        distance_vec[i].push_back(k);
         ++k;
       }
 
@@ -74,6 +80,7 @@ void GenPair::Compute(OpKernelContext* ctx) {
       while ((j + k + 1) < path_len && k < right_win_size_) {
         pairs[i].push_back(path[j]);
         pairs[i].push_back(path[j + k + 1]);
+        distance_vec[i].push_back(k);
         ++k;
       }
     }
@@ -87,10 +94,20 @@ void GenPair::Compute(OpKernelContext* ctx) {
   Tensor* output = nullptr;
   OP_REQUIRES_OK(ctx, ctx->allocate_output(0, output_shape, &output));
 
+  TensorShape output_shape2;
+  output_shape2.AddDim(batch_size);
+  output_shape2.AddDim(pair_count);
+
+  Tensor* distance = nullptr;
+  OP_REQUIRES_OK(ctx, ctx->allocate_output(1, output_shape2, &distance));
+
   auto output_data = output->flat<int64>().data();
+  auto distance_data = distance->flat<int64>().data();
   for (int i = 0; i < batch_size; ++i) {
     memcpy(output_data + i * pair_count * 2, pairs[i].data(),
            pairs[i].size() * sizeof(int64));
+    memcpy(distance_data + i * pair_count, distance_vec[i].data(),
+           distance_vec[i].size() * sizeof(int64));
   }
 }
 
