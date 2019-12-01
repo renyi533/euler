@@ -65,7 +65,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_float('walk_q', 1., 'Node2Vec in-out parameter.')
   tf.flags.DEFINE_integer('left_win_size', 5, 'Left window size.')
   tf.flags.DEFINE_integer('right_win_size', 5, 'Right window size.')
-  tf.flags.DEFINE_integer('skip_len', 0, 'walklets skip len.')
+  tf.flags.DEFINE_list('skip_len', [1,2], 'walklets skip len.')
   tf.flags.DEFINE_list('fanouts', [10, 10], 'GCN fanouts.')
   tf.flags.DEFINE_enum('aggregator', 'mean',
                        ['gcn', 'mean', 'meanpool', 'maxpool', 'attention'],

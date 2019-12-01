@@ -30,7 +30,7 @@ class Walklets(base.UnsupervisedModel):
   """
 
   def __init__(self, node_type, edge_type, max_id,
-               dim, skip_len=0, walk_len=3, walk_p=1, walk_q=1,
+               dim, skip_len=[0], walk_len=3, walk_p=1, walk_q=1,
                left_win_size=1, right_win_size=1, num_negs=5,
                feature_idx=-1, feature_dim=0, use_id=True,
                sparse_feature_idx=-1, sparse_feature_max_id=-1,
@@ -50,15 +50,32 @@ class Walklets(base.UnsupervisedModel):
     self.right_win_size = right_win_size
     self.num_negs = num_negs
     self.share_negs = share_negs
+
+    if not isinstance(skip_len, list):
+      skip_len = [skip_len]
+      
+    skip_len = map(int, skip_len)
     self.skip_len = skip_len
-    self.left_win_size = min(self.left_win_size, skip_len+1)
-    self.right_win_size = min(self.right_win_size, skip_len+1)
-    self.max_distance = max(self.left_win_size, self.right_win_size)
 
     self.batch_size_ratio = 0
+    
+    max_skip_len = skip_len[0]
+    for e in skip_len:
+      if e > max_skip_len:
+        max_skip_len = e
+      
+      if e < left_win_size:
+        self.batch_size_ratio += walk_len - e - 1
 
-    assert skip_len < self.max_distance
-    self.batch_size_ratio += walk_len - skip_len - 1
+      if e < right_win_size:
+        self.batch_size_ratio += walk_len - e - 1
+
+    self.left_win_size = min(self.left_win_size, max_skip_len+1)
+    self.right_win_size = min(self.right_win_size, max_skip_len+1)
+    self.max_distance = max(self.left_win_size, self.right_win_size)
+
+    assert max_skip_len < self.max_distance
+    assert self.batch_size_ratio > 0
 
     self._target_encoder = encoders.ShallowEncoder(
         dim=dim, feature_idx=feature_idx, feature_dim=feature_dim,
@@ -87,7 +104,13 @@ class Walklets(base.UnsupervisedModel):
     distance = tf.reshape(distance, [-1])
     distance = tf.cast(distance, dtype=tf.int32)
     pairs = tf.dynamic_partition(pair, distance, num_partitions=self.max_distance)
-    src, pos = tf.split(pairs[self.skip_len], [1, 1], axis=-1)
+    pair_list = []
+    for e in self.skip_len:
+      if e < len(pairs):
+        pair_list.append(pairs[e])
+    pairs = tf.concat(pair_list, axis=0)
+
+    src, pos = tf.split(pairs, [1, 1], axis=-1)
     src = tf.reshape(src, [-1, 1])
     pos = tf.reshape(pos, [-1, 1])
     negs = euler_ops.sample_node_with_src(tf.reshape(pos, [-1]), self.num_negs, self.share_negs)
