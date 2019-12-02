@@ -50,6 +50,7 @@ class UnsupervisedModel(Model):
                num_negs=5,
                loss_type='xent',
                share_negs=False,
+               switch_side=False,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -58,6 +59,7 @@ class UnsupervisedModel(Model):
     self.num_negs = num_negs
     self.loss_type = loss_type
     self.share_negs = share_negs
+    self.switch_side = switch_side
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -104,16 +106,31 @@ class UnsupervisedModel(Model):
 
   def call(self, inputs):
     src, pos, negs = self.to_sample(inputs)
-    embedding = self.target_encoder(src)
-    embedding_pos = self.context_encoder(pos)
+    if self.switch_side:
+      embedding = self.context_encoder(src)
+      embedding_pos = self.target_encoder(pos)
+    else:
+      embedding = self.target_encoder(src)
+      embedding_pos = self.context_encoder(pos)
+
     negs_1d = tf.reshape(negs, [-1])
     uniq_negs, idx = tf.unique(negs_1d)
-    embedding_negs = self.context_encoder(uniq_negs)
+
+    if self.switch_side:
+      embedding_negs = self.target_encoder(uniq_negs)
+    else:
+      embedding_negs = self.context_encoder(uniq_negs)
+
     embedding_negs = tf.gather(embedding_negs, idx, axis=0)
     embedding_negs = tf.reshape(embedding_negs,
                                 [tf.shape(embedding)[0],self.num_negs,-1]) 
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
-    embedding = self.target_encoder(inputs)
+    if self.switch_side:
+      print("switch target/context side within UnsupervisedModel")
+      embedding = self.context_encoder(inputs)
+    else:
+      print("Not switch target/context side within UnsupervisedModel")
+      embedding = self.target_encoder(inputs)
     return ModelOutput(
         embedding=embedding, loss=loss, metric_name='mrr', metric=mrr)
 

@@ -56,6 +56,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_string('model', 'graphsage_supervised', 'Embedding model.')
   tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
   tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
+  tf.flags.DEFINE_boolean('switch_side', False, 'Whether to use sigmoid loss.')
   tf.flags.DEFINE_string('unsupervised_loss', 'xent', 'Whether to use xent loss.')
   tf.flags.DEFINE_integer('dim', 256, 'Dimension of embedding.')
   tf.flags.DEFINE_integer('num_negs', 5, 'Number of negative samplings.')
@@ -243,6 +244,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         num_negs=flags_obj.num_negs,
         order=flags_obj.order,
         share_negs=flags_obj.share_negs,
+        switch_side=flags_obj.switch_side,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
@@ -259,6 +261,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         right_win_size=flags_obj.right_win_size,
         loss_type=flags_obj.unsupervised_loss,
         share_negs=flags_obj.share_negs,
+        switch_side=flags_obj.switch_side,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
@@ -276,6 +279,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         right_win_size=flags_obj.right_win_size,
         loss_type=flags_obj.unsupervised_loss,
         share_negs=flags_obj.share_negs,
+        switch_side=flags_obj.switch_side,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
@@ -325,6 +329,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         feature_idx=flags_obj.feature_idx,
         feature_dim=flags_obj.feature_dim,
         share_negs=flags_obj.share_negs,
+        switch_side=flags_obj.switch_side,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':
