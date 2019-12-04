@@ -147,7 +147,7 @@ public class BinaryDataGen {
       }
       FileInputFormat.addInputPath(job, new Path(extraArgs[0]));
       FileOutputFormat.setOutputPath(job, new Path(extraArgs[1]));
-      job.setJobName("Json to Binary Data Conversion for Euler");
+      //job.setJobName("Json to Binary Data Conversion for Euler");
 
       LazyOutputFormat.setOutputFormatClass(job, EulerFormat.class);
       return (job.waitForCompletion(true) ? 0 : 1);
