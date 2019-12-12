@@ -16,6 +16,7 @@ inflate_idx = base._LIB_OP.inflate_idx
 sparse_gather = base._LIB_OP.sparse_gather
 euler_hash_fid = base._LIB_OP.euler_hash_fid
 euler_hash_fid_v2 = base._LIB_OP.hash_to_fid
+reciprocal_rank_weight = base._LIB_OP.reciprocal_rank_weight
 
 def hash_fid_v2(fids, hash_space, partition=None, erase=False):
   with tf.variable_scope('hash_fids', 

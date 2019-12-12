@@ -15,6 +15,26 @@ limitations under the License.
 #include "tensorflow/core/framework/common_shape_fns.h"
 
 namespace tensorflow {
+using shape_inference::InferenceContext;
+using shape_inference::ShapeHandle;
+using shape_inference::DimensionHandle;
+
+  REGISTER_OP("ReciprocalRankWeight")
+  .Input("input: int32")
+  .Output("out: float")
+  .SetShapeFn(
+    [] (InferenceContext* c) {
+      ShapeHandle inputs;
+      TF_RETURN_IF_ERROR(c->WithRank(c->input(0), 1, &inputs));
+
+      auto size = c->Value(c->Dim(inputs, 0));
+      std::vector<DimensionHandle> dims;
+      dims.emplace_back(c->MakeDim(size));
+      c->set_output(0, c->MakeShape(dims));
+      return Status::OK();})
+  .Doc(R"doc(
+Get weight of Reciprocal Rank. Input&output are 1D vector.
+)doc");
 
   REGISTER_OP("InflateIdx")
   .Attr("T: {int32}")

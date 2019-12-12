@@ -51,6 +51,13 @@ class UtilOpsTest(test.TestCase):
              'load_type': 'compact'
             })
 
+    def testReciprocalRankWeight(self):
+        """Test euler get node type"""
+        op = ops.reciprocal_rank_weight([0, 2, 1, 5, 6, 1024])
+        with tf.Session() as sess:
+            result = sess.run(op)
+            self.assertAllClose([1.0, 1.8333334, 1.5, 2.4500003, 2.5928574, 7.5101585], result);
+
     def testInflateIdxUnique(self):
         """Test euler get node type"""
         op = ops.inflate_idx([0, 2, 1, 3])

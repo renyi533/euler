@@ -53,6 +53,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_integer('num_classes', None, 'Number of classes.')
   tf.flags.DEFINE_list('id_file', [], 'Files containing ids to evaluate.')
 
+  tf.flags.DEFINE_boolean('rr_reweight', False, 'Whether to reweight loss based on reciprocal rank.')
   tf.flags.DEFINE_string('model', 'graphsage_supervised', 'Embedding model.')
   tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
   tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
@@ -245,6 +246,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         order=flags_obj.order,
         share_negs=flags_obj.share_negs,
         switch_side=flags_obj.switch_side,
+        rr_reweight=flags_obj.rr_reweight,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
@@ -262,6 +264,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         loss_type=flags_obj.unsupervised_loss,
         share_negs=flags_obj.share_negs,
         switch_side=flags_obj.switch_side,
+        rr_reweight=flags_obj.rr_reweight,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
@@ -280,6 +283,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         loss_type=flags_obj.unsupervised_loss,
         share_negs=flags_obj.share_negs,
         switch_side=flags_obj.switch_side,
+        rr_reweight=flags_obj.rr_reweight,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
@@ -330,6 +334,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         feature_dim=flags_obj.feature_dim,
         share_negs=flags_obj.share_negs,
         switch_side=flags_obj.switch_side,
+        rr_reweight=flags_obj.rr_reweight,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':

@@ -50,6 +50,7 @@ class UnsupervisedModel(Model):
                num_negs=5,
                loss_type='xent',
                share_negs=False,
+               rr_reweight=False,
                switch_side=False,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
@@ -60,6 +61,7 @@ class UnsupervisedModel(Model):
     self.loss_type = loss_type
     self.share_negs = share_negs
     self.switch_side = switch_side
+    self.rr_reweight = rr_reweight
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -82,26 +84,44 @@ class UnsupervisedModel(Model):
     size = tf.shape(aff_all)[2]
     _, indices_of_ranks = tf.nn.top_k(aff_all, k=size)
     _, ranks = tf.nn.top_k(-indices_of_ranks, k=size)
-    return tf.reduce_mean(tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1)))
+    rr = tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1))
+    return tf.reduce_mean(rr), ranks[:, :, -1]
 
   def decoder(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
-    mrr = self._mrr(logits, neg_logits)
+    mrr, ranks = self._mrr(logits, neg_logits)
+    rr_weight = euler_ops.reciprocal_rank_weight(tf.reshape(ranks, [-1]))
+    rr_weight = tf.stop_gradient(rr_weight)
+    mean_rr_weight = tf.reduce_mean(rr_weight)
+    rr_weight = tf.expand_dims(rr_weight, -1)
+    rr_weight = tf.expand_dims(rr_weight, -1)
+
+    if not self.rr_reweight:
+      rr_weight = 1.0
+      mean_rr_weight = 1.0
+      print('disable reciprocal rank reweight')
+    else:
+      print('enable reciprocal rank reweight')
+      
     if self.loss_type == 'xent':
       true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.ones_like(logits), logits=logits)
+      true_xent = tf.multiply(true_xent, rr_weight) / mean_rr_weight
       negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.zeros_like(neg_logits), logits=neg_logits)
+      negative_xent = tf.multiply(negative_xent, rr_weight) / mean_rr_weight  
       loss = tf.reduce_sum(true_xent) + tf.reduce_sum(negative_xent)
     elif self.loss_type == 'margin':
       delta = neg_logits + 1 - logits
+      delta = delta * rr_weight / mean_rr_weight
       loss = tf.reduce_sum(tf.maximum(delta, 0.0))
     else:
       assert self.loss_type == 'rank'
       all_logits = tf.concat([neg_logits, logits], axis=2)
       all_cost = tf.reduce_logsumexp(all_logits, axis=2, keepdims=True)
-      loss = -tf.reduce_sum(logits - all_cost)
+      delta = (logits - all_cost) * rr_weight / mean_rr_weight
+      loss = -tf.reduce_sum(delta)
     return loss, mrr
 
   def call(self, inputs):
@@ -133,80 +153,6 @@ class UnsupervisedModel(Model):
       embedding = self.target_encoder(inputs)
     return ModelOutput(
         embedding=embedding, loss=loss, metric_name='mrr', metric=mrr)
-
-
-class UnsupervisedModelV2(Model):
-  """
-  Base model for unsupervised network embedding model.
-  """
-
-  def __init__(self,
-               node_type,
-               edge_type,
-               max_id,
-               num_negs=20,
-               xent_loss=False,
-               **kwargs):
-    super(UnsupervisedModelV2, self).__init__(**kwargs)
-    self.node_type = node_type
-    self.edge_type = edge_type
-    self.max_id = max_id
-    self.num_negs = num_negs
-    self.xent_loss = xent_loss
-
-  def sample_positives(self, inputs):
-    batch_size = tf.size(inputs)
-    src = tf.expand_dims(inputs, -1)
-    pos = euler_ops.sample_neighbor(inputs, self.edge_type, 1,
-                                    self.max_id + 1)[0]
-    return src, pos
-
-  def sample_negatives(self):
-    negs = euler_ops.sample_node(self.num_negs, self.node_type)
-    negs.set_shape([self.num_negs])
-    return negs
-
-  def target_encoder(self, inputs):
-    raise NotImplementedError()
-
-  def context_encoder(self, inputs):
-    raise NotImplementedError()
-
-  def _mrr(self, aff, aff_neg):
-    aff_all = tf.concat([aff_neg, aff], axis=2)
-    size = tf.shape(aff_all)[2]
-    _, indices_of_ranks = tf.nn.top_k(aff_all, k=size)
-    _, ranks = tf.nn.top_k(-indices_of_ranks, k=size)
-    return tf.reduce_mean(tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1)))
-
-  def decoder(self, embedding, embedding_pos, embedding_negs):
-    logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
-    neg_logits = tf.tensordot(embedding, embedding_negs, [[-1], [-1]])
-    mrr = self._mrr(logits, neg_logits)
-    if self.xent_loss:
-      true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
-          labels=tf.ones_like(logits), logits=logits)
-      negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
-          labels=tf.zeros_like(neg_logits), logits=neg_logits)
-      loss = tf.reduce_sum(true_xent) + tf.reduce_sum(negative_xent)
-    else:
-      neg_cost = tf.reduce_logsumexp(neg_logits, axis=2, keepdims=True)
-      loss = -tf.reduce_sum(logits - neg_cost)
-    return loss, mrr
-
-  def call(self, inputs):
-    src, pos = self.sample_positives(inputs)
-    negs = self.sample_negatives()
-
-    embedding = self.target_encoder(src)
-    embedding_pos = self.context_encoder(pos)
-    embedding_negs = self.context_encoder(negs)
-
-    loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
-    embedding = self.target_encoder(inputs)
-    return ModelOutput(
-        embedding=embedding, loss=loss, metric_name='mrr', metric=mrr)
-
 
 class SupervisedModel(Model):
   """

@@ -51,6 +51,7 @@ add_library(tf_euler SHARED
             kernels/gen_pair_op.cc
             kernels/inflate_idx_op.cc
             kernels/sparse_gather_op.cc
+            kernels/reciprocal_rank_weight_op.cc
             utils/create_graph.cc)
 
 target_link_libraries(tf_euler client common ${TF_FRAMEWORK} jemalloc_STATIC_PIC)
