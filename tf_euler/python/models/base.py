@@ -51,7 +51,7 @@ class UnsupervisedModel(Model):
                share_negs=False,
                rr_reweight=False,
                switch_side=False,
-               mrr_ema_ratio=0.999,
+               mrr_ema_ratio=0.993,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -88,10 +88,11 @@ class UnsupervisedModel(Model):
     rr = tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1))
     with tf.variable_scope('mrr_scope', reuse=tf.AUTO_REUSE):
       mrr_var = tf.get_variable('mrr', shape=[], dtype=tf.float32, 
-                  initializer=tf.constant_initializer(0),
-                  trainable=False, collections=[tf.GraphKeys.GLOBAL_VARIABLES])
+                  initializer=tf.constant_initializer(0.0),
+                  trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
     curr_mrr = tf.reduce_mean(rr)
-    mrr_delta = mrr_var*self.mrr_ema_ratio + (1-self.mrr_ema_ratio)*curr_mrr - mrr_var
+    mrr_new = (mrr_var*self.mrr_ema_ratio + (1-self.mrr_ema_ratio)*curr_mrr)
+    mrr_delta = mrr_new - mrr_var
     mrr = tf.assign_add(mrr_var, mrr_delta)
     return mrr, tf.reshape(ranks[:, :, -1], [-1])
 
