@@ -37,7 +37,6 @@ class Model(layers.Layer):
     super(Model, self).__init__(**kwargs)
     self.batch_size_ratio = 1
 
-
 class UnsupervisedModel(Model):
   """
   Base model for unsupervised network embedding model.
@@ -52,6 +51,7 @@ class UnsupervisedModel(Model):
                share_negs=False,
                rr_reweight=False,
                switch_side=False,
+               mrr_ema_ratio=0.999,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -62,6 +62,7 @@ class UnsupervisedModel(Model):
     self.share_negs = share_negs
     self.switch_side = switch_side
     self.rr_reweight = rr_reweight
+    self.mrr_ema_ratio = mrr_ema_ratio
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -85,7 +86,14 @@ class UnsupervisedModel(Model):
     _, indices_of_ranks = tf.nn.top_k(aff_all, k=size)
     _, ranks = tf.nn.top_k(-indices_of_ranks, k=size)
     rr = tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1))
-    return tf.reduce_mean(rr), ranks[:, :, -1]
+    with tf.variable_scope('mrr_scope', reuse=tf.AUTO_REUSE):
+      mrr_var = tf.get_variable('mrr', shape=[], dtype=tf.float32, 
+                  initializer=tf.constant_initializer(0),
+                  trainable=False, collections=[tf.GraphKeys.GLOBAL_VARIABLES])
+    curr_mrr = tf.reduce_mean(rr)
+    mrr_delta = mrr_var*self.mrr_ema_ratio + (1-self.mrr_ema_ratio)*curr_mrr - mrr_var
+    mrr = tf.assign_add(mrr_var, mrr_delta)
+    return mrr, tf.reshape(ranks[:, :, -1], [-1])
 
   def decoder(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
