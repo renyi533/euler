@@ -24,6 +24,8 @@ import tensorflow as tf
 from tf_euler.python import euler_ops
 from tf_euler.python import layers
 from tf_euler.python import metrics
+from tf_euler.python.utils import embedding
+from tf_euler.python.euler_ops import util_ops
 
 ModelOutput = collections.namedtuple(
     'ModelOutput', ['embedding', 'loss', 'metric_name', 'metric'])
@@ -50,8 +52,9 @@ class UnsupervisedModel(Model):
                loss_type='xent',
                share_negs=False,
                rr_reweight=False,
+               enable_nce=False,
                switch_side=False,
-               mrr_ema_ratio=0.993,
+               mrr_ema_ratio=0.9,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -63,6 +66,7 @@ class UnsupervisedModel(Model):
     self.switch_side = switch_side
     self.rr_reweight = rr_reweight
     self.mrr_ema_ratio = mrr_ema_ratio
+    self.enable_nce = enable_nce
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -85,7 +89,7 @@ class UnsupervisedModel(Model):
     size = tf.shape(aff_all)[2]
     _, indices_of_ranks = tf.nn.top_k(aff_all, k=size)
     _, ranks = tf.nn.top_k(-indices_of_ranks, k=size)
-    rr = tf.reciprocal(tf.to_float(ranks[:, :, -1] + 1))
+    rr = tf.reciprocal(tf.cast(ranks[:, :, -1] + 1, tf.float32))
     with tf.variable_scope('mrr_scope', reuse=tf.AUTO_REUSE):
       mrr_var = tf.get_variable('mrr', shape=[], dtype=tf.float32, 
                   initializer=tf.constant_initializer(0.0),
@@ -99,6 +103,18 @@ class UnsupervisedModel(Model):
   def decoder(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
+   
+    tf.summary.histogram('pos_logits', logits)
+    tf.summary.histogram('neg_logits', neg_logits)
+    if self.enable_nce:
+      print('enable nce')
+      logits = logits - self.pos_logQ
+      neg_logits = neg_logits - self.neg_logQ
+      tf.summary.histogram('nce_pos_logits', logits)
+      tf.summary.histogram('nce_neg_logits', neg_logits)
+    else:
+      print('disable nce')
+
     mrr, ranks = self._mrr(logits, neg_logits)
     rr_weight = euler_ops.reciprocal_rank_weight(tf.reshape(ranks, [-1]))
     rr_weight = tf.stop_gradient(rr_weight)
@@ -120,7 +136,7 @@ class UnsupervisedModel(Model):
       negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.zeros_like(neg_logits), logits=neg_logits)
       negative_xent = tf.multiply(negative_xent, rr_weight) / mean_rr_weight  
-      loss = tf.reduce_sum(true_xent) + tf.reduce_sum(negative_xent)
+      loss = tf.reduce_sum(true_xent) + tf.reduce_sum(negative_xent) 
     elif self.loss_type == 'margin':
       delta = neg_logits + 1 - logits
       delta = delta * rr_weight / mean_rr_weight
@@ -133,6 +149,42 @@ class UnsupervisedModel(Model):
       loss = -tf.reduce_sum(delta)
     return loss, mrr
 
+  def _nce_logits_logQ(self, pos, uniq_negs, neg_counts):
+    with tf.variable_scope('nce_logQ', 
+                           reuse=tf.AUTO_REUSE):
+      id_cnt = tf.get_variable('id_count',
+                               [self.max_id+1,1],
+                               dtype=tf.int64,
+                               trainable=False,
+                               initializer=tf.constant_initializer([1]))
+     
+      id_sum_cnt = tf.get_variable('id_sum_count', [], dtype=tf.int64,
+                                   trainable=False, 
+                                   initializer=tf.constant_initializer(1))
+
+      pos_ids = util_ops.hash_fid_v2(pos, self.max_id+1)
+      uniq_neg_ids = util_ops.hash_fid_v2(uniq_negs, self.max_id+1)
+      neg_counts = tf.reshape(neg_counts, [-1,1])
+      id_cnt_update = embedding.embedding_add(id_cnt, uniq_neg_ids, neg_counts, 
+                            partition_strategy='mod')
+      sum_cnt_update = tf.assign_add(id_sum_cnt, tf.reduce_sum(neg_counts))
+      with tf.control_dependencies([id_cnt_update, sum_cnt_update]):
+        sum_cnt = tf.cast(sum_cnt_update, tf.float32)
+        tf.summary.scalar('nce_sum_cnt', sum_cnt)
+        pos_cnt = tf.cast(tf.nn.embedding_lookup(id_cnt, pos_ids, partition_strategy='mod'), 
+                        tf.float32)
+        tf.summary.histogram('nce_pos_cnt', pos_cnt)
+        neg_cnt = tf.cast(tf.nn.embedding_lookup(id_cnt, uniq_neg_ids, partition_strategy='mod'), 
+                        tf.float32)
+        tf.summary.histogram('nce_neg_cnt', neg_cnt)
+        
+        pos_logQ = tf.log(pos_cnt) - tf.log(sum_cnt)
+        tf.summary.histogram('nce_pos_logQ', pos_logQ)
+        neg_logQ = tf.log(neg_cnt) - tf.log(sum_cnt)
+        tf.summary.histogram('nce_neg_logQ', neg_logQ)
+
+      return tf.reshape(pos_logQ, [-1]), tf.reshape(neg_logQ, [-1])
+        
   def call(self, inputs):
     src, pos, negs = self.to_sample(inputs)
     if self.switch_side:
@@ -143,7 +195,12 @@ class UnsupervisedModel(Model):
       embedding_pos = self.context_encoder(pos)
 
     negs_1d = tf.reshape(negs, [-1])
-    uniq_negs, idx = tf.unique(negs_1d)
+    uniq_negs, idx, counts = tf.unique_with_counts(negs_1d, 
+                                                   out_idx=tf.int64)
+
+    
+    pos_logQ, neg_logQ = self._nce_logits_logQ(tf.reshape(pos, [-1]), 
+                                               uniq_negs, counts)
 
     if self.switch_side:
       embedding_negs = self.target_encoder(uniq_negs)
@@ -152,7 +209,13 @@ class UnsupervisedModel(Model):
 
     embedding_negs = tf.gather(embedding_negs, idx, axis=0)
     embedding_negs = tf.reshape(embedding_negs,
-                                [tf.shape(embedding)[0],self.num_negs,-1]) 
+                                [tf.shape(embedding)[0],self.num_negs,-1])
+    neg_logQ = tf.gather(neg_logQ, idx, axis=0)
+    self.neg_logQ = tf.reshape(neg_logQ, 
+                               [tf.shape(embedding)[0],1,self.num_negs]) 
+    self.pos_logQ = tf.reshape(pos_logQ, 
+                               [tf.shape(embedding)[0],1,1]) 
+
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
     if self.switch_side:
       print("switch target/context side within UnsupervisedModel")

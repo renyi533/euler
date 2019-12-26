@@ -16,7 +16,7 @@ class AsymGraphSage(base.UnsupervisedModel):
                embedding_dim=16, use_hash_embedding=False, use_residual=False,
                *args, **kwargs):
     super(AsymGraphSage, self).__init__(
-        node_type, edge_type, max_id, *args, **kwargs)
+        node_type, edge_type, context_max_id, *args, **kwargs)
     self._target_encoder = encoders.SageEncoder(
         metapath, fanouts, dim, aggregator, concat,
         feature_idx=feature_idx, feature_dim=feature_dim,
