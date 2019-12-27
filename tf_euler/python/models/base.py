@@ -54,7 +54,7 @@ class UnsupervisedModel(Model):
                rr_reweight=False,
                enable_nce=False,
                switch_side=False,
-               mrr_ema_ratio=0.9,
+               mrr_ema_ratio=0.991,
                temperature=1.0,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
@@ -97,9 +97,12 @@ class UnsupervisedModel(Model):
                   initializer=tf.constant_initializer(0.0),
                   trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
     curr_mrr = tf.reduce_mean(rr)
-    mrr_new = (mrr_var*self.mrr_ema_ratio + (1-self.mrr_ema_ratio)*curr_mrr)
-    mrr_delta = mrr_new - mrr_var
-    mrr = tf.assign_add(mrr_var, mrr_delta)
+    with tf.control_dependencies([curr_mrr]):
+      orig_mrr = tf.identity(mrr_var)
+      mrr_new = (orig_mrr*self.mrr_ema_ratio + (1-self.mrr_ema_ratio)*curr_mrr)
+      mrr_delta = mrr_new - orig_mrr
+      with tf.colocate_with(mrr_var):
+        mrr = tf.assign_add(mrr_var, mrr_delta, use_locking=True)
     return mrr, tf.reshape(ranks[:, :, -1], [-1])
 
   def decoder(self, embedding, embedding_pos, embedding_negs):
