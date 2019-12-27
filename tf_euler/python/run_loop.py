@@ -97,6 +97,7 @@ def define_network_embedding_flags():
                          'Euler ZK registration service.')
   tf.flags.DEFINE_string('euler_zk_path', '/tf_euler',
                          'Euler ZK registration node.')
+  tf.flags.DEFINE_float('temperature', 1.0, 'logits temperature.')
 
 
 def run_train(model, flags_obj, master, is_chief):
@@ -249,6 +250,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         switch_side=flags_obj.switch_side,
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
@@ -268,6 +270,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         switch_side=flags_obj.switch_side,
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
@@ -288,6 +291,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         switch_side=flags_obj.switch_side,
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
@@ -302,6 +306,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         feature_idx=flags_obj.feature_idx,
         feature_dim=flags_obj.feature_dim,
         use_residual=flags_obj.use_residual,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'scalable_gcn':
@@ -320,6 +325,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         use_residual=flags_obj.use_residual,
         store_learning_rate=flags_obj.store_learning_rate,
         store_init_maxval=flags_obj.store_init_maxval,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage':
@@ -340,6 +346,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         switch_side=flags_obj.switch_side,
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':
@@ -355,6 +362,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         concat=flags_obj.concat,
         feature_idx=flags_obj.feature_idx,
         feature_dim=flags_obj.feature_dim,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'scalable_sage':
@@ -368,6 +376,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         max_id=flags_obj.max_id,
         store_learning_rate=flags_obj.store_learning_rate,
         store_init_maxval=flags_obj.store_init_maxval,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'gat':
@@ -382,6 +391,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         head_num=flags_obj.head_num,
         hidden_dim=flags_obj.dim,
         nb_num=5,
+        temperature=flags_obj.temperature,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'lshne':

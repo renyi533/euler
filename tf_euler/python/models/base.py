@@ -55,6 +55,7 @@ class UnsupervisedModel(Model):
                enable_nce=False,
                switch_side=False,
                mrr_ema_ratio=0.9,
+               temperature=1.0,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -67,6 +68,7 @@ class UnsupervisedModel(Model):
     self.rr_reweight = rr_reweight
     self.mrr_ema_ratio = mrr_ema_ratio
     self.enable_nce = enable_nce
+    self.temperature = temperature
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -103,7 +105,10 @@ class UnsupervisedModel(Model):
   def decoder(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
-   
+    print('temperature: %f' % (self.temperature))
+    logits = logits / self.temperature
+    neg_logits = neg_logits / self.temperature
+
     tf.summary.histogram('pos_logits', logits)
     tf.summary.histogram('neg_logits', neg_logits)
     if self.enable_nce:
@@ -236,6 +241,7 @@ class SupervisedModel(Model):
                label_dim,
                num_classes=None,
                sigmoid_loss=False,
+               temperature=1.0,
                **kwargs):
     super(SupervisedModel, self).__init__()
     self.label_idx = label_idx
@@ -246,7 +252,7 @@ class SupervisedModel(Model):
       raise ValueError('laben_dim must match num_classes.')
     self.num_classes = num_classes
     self.sigmoid_loss = sigmoid_loss
-
+    self.temperature = temperature
     self.predict_layer = layers.Dense(num_classes)
 
   def encoder(self, inputs):
@@ -254,6 +260,8 @@ class SupervisedModel(Model):
 
   def decoder(self, embeddings, labels):
     logits = self.predict_layer(embeddings)
+    print('temperature: %f' % (self.temperature))
+    logits = logits / self.temperature
     if self.sigmoid_loss:
       loss = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=labels, logits=logits)
