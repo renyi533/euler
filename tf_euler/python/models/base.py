@@ -108,20 +108,27 @@ class UnsupervisedModel(Model):
   def decoder(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
-    print('temperature: %f' % (self.temperature))
-    logits = logits / self.temperature
-    neg_logits = neg_logits / self.temperature
-
     tf.summary.histogram('pos_logits', logits)
     tf.summary.histogram('neg_logits', neg_logits)
     if self.enable_nce:
       print('enable nce')
-      logits = logits - self.pos_logQ
-      neg_logits = neg_logits - self.neg_logQ
+      if self.loss_type == 'xent':
+        logits = logits - self.pos_logQ - tf.log(float(self.num_negs))
+        neg_logits = neg_logits - self.neg_logQ - tf.log(float(self.num_negs))
+      elif self.loss_type == 'rank':
+        logits = logits - self.pos_logQ
+        neg_logits = neg_logits - self.neg_logQ
+
       tf.summary.histogram('nce_pos_logits', logits)
       tf.summary.histogram('nce_neg_logits', neg_logits)
     else:
       print('disable nce')
+
+    print('temperature: %f' % (self.temperature))
+    logits = logits / self.temperature
+    neg_logits = neg_logits / self.temperature
+    tf.summary.histogram('pos_logits_temperature', logits)
+    tf.summary.histogram('neg_logits_temperature', neg_logits)
 
     mrr, ranks = self._mrr(logits, neg_logits)
     rr_weight = euler_ops.reciprocal_rank_weight(tf.reshape(ranks, [-1]))
@@ -136,7 +143,8 @@ class UnsupervisedModel(Model):
       print('disable reciprocal rank reweight')
     else:
       print('enable reciprocal rank reweight')
-      
+    
+    print('loss type: %s' % (self.loss_type))
     if self.loss_type == 'xent':
       true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
           labels=tf.ones_like(logits), logits=logits)
@@ -162,33 +170,34 @@ class UnsupervisedModel(Model):
                            reuse=tf.AUTO_REUSE):
       id_cnt = tf.get_variable('id_count',
                                [self.max_id+1,1],
-                               dtype=tf.int64,
+                               dtype=tf.float64,
                                trainable=False,
                                initializer=tf.constant_initializer([1]))
      
-      id_sum_cnt = tf.get_variable('id_sum_count', [], dtype=tf.int64,
+      id_sum_cnt = tf.get_variable('id_sum_count', [], dtype=tf.float64,
                                    trainable=False, 
                                    initializer=tf.constant_initializer(1))
 
       pos_ids = util_ops.hash_fid_v2(pos, self.max_id+1)
       uniq_neg_ids = util_ops.hash_fid_v2(uniq_negs, self.max_id+1)
       neg_counts = tf.reshape(neg_counts, [-1,1])
-      id_cnt_update = embedding.embedding_add(id_cnt, uniq_neg_ids, neg_counts, 
+      id_cnt_update = embedding.embedding_add(id_cnt, uniq_neg_ids, 
+                            tf.cast(neg_counts, tf.float64) , 
                             partition_strategy='mod')
-      sum_cnt_update = tf.assign_add(id_sum_cnt, tf.reduce_sum(neg_counts))
+      sum_cnt_update = tf.assign_add(id_sum_cnt, 
+                        tf.cast(tf.reduce_sum(neg_counts), tf.float64), 
+                        use_locking=True)
       with tf.control_dependencies([id_cnt_update, sum_cnt_update]):
-        sum_cnt = tf.cast(sum_cnt_update, tf.float32)
+        sum_cnt = sum_cnt_update
         tf.summary.scalar('nce_sum_cnt', sum_cnt)
-        pos_cnt = tf.cast(tf.nn.embedding_lookup(id_cnt, pos_ids, partition_strategy='mod'), 
-                        tf.float32)
+        pos_cnt = tf.nn.embedding_lookup(id_cnt, pos_ids, partition_strategy='mod')
         tf.summary.histogram('nce_pos_cnt', pos_cnt)
-        neg_cnt = tf.cast(tf.nn.embedding_lookup(id_cnt, uniq_neg_ids, partition_strategy='mod'), 
-                        tf.float32)
+        neg_cnt = tf.nn.embedding_lookup(id_cnt, uniq_neg_ids, partition_strategy='mod')
         tf.summary.histogram('nce_neg_cnt', neg_cnt)
         
-        pos_logQ = tf.log(pos_cnt) - tf.log(sum_cnt)
+        pos_logQ = tf.cast(tf.log(pos_cnt) - tf.log(sum_cnt), tf.float32)
         tf.summary.histogram('nce_pos_logQ', pos_logQ)
-        neg_logQ = tf.log(neg_cnt) - tf.log(sum_cnt)
+        neg_logQ = tf.cast(tf.log(neg_cnt) - tf.log(sum_cnt), tf.float32)
         tf.summary.histogram('nce_neg_logQ', neg_logQ)
 
       return tf.reshape(pos_logQ, [-1]), tf.reshape(neg_logQ, [-1])
