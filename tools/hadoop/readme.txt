@@ -22,7 +22,7 @@ hadoop jar <path of BinaryDataGen.jar> BinaryDataGen -libjars <path of fastjson.
 
 for example:
 
-hadoop jar ./BinaryDataGen.jar BinaryDataGen -libjars /data01/home/renyi.bj/jar/fastjson-1.2.59.jar,/data01/home/renyi.bj/jar/graph_data_parser.jar -D mapred.job.priority=HIGH -D mapred.job.map.capacity=100 -D mapred.reduce.tasks=3 -D mapred.job.reduce.capacity=3  -D mapred.job.name='Json to Binary Conversion' /ss_ml/recommend/yiren/ppi/input  /ss_ml/recommend/yiren/ppi/out2 4
+hadoop jar ./BinaryDataGen.jar BinaryDataGen -libjars /data01/home/renyi.bj/jar/fastjson-1.2.59.jar,/data01/home/renyi.bj/jar/graph_data_parser.jar -D mapred.job.priority=HIGH -D mapred.job.map.capacity=100 -D mapred.reduce.tasks=3 -D mapred.job.reduce.capacity=3  -D mapred.job.name='Json to Binary Conversion' -D mapreduce.reduce.java.opts=-Xmx4096M -D mapreduce.map.java.opts=-Xmx4096M -D yarn.cluster.name=xxx -D mapred.job.queue.name=xxx /ss_ml/recommend/yiren/ppi/input  /ss_ml/recommend/yiren/ppi/out2 4
 
 Please study https://github.com/alibaba/euler/wiki/Preparing-Data for the json format. (Note: for both meta and data, each json block should be in a single line starting with "{" and end with "}".)
 
