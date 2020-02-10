@@ -73,8 +73,7 @@ class UnsupervisedModel(Model):
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
     src = tf.expand_dims(inputs, -1)
-    pos = euler_ops.sample_neighbor(inputs, self.edge_type, 1,
-                                    self.max_id + 1)[0]
+    pos = euler_ops.sample_neighbor(inputs, self.edge_type, 1)[0]
     negs = euler_ops.sample_node_with_src(tf.reshape(pos,[-1]),
                     self.num_negs, self.share_negs)
     negs = tf.reshape(negs, [batch_size, self.num_negs])

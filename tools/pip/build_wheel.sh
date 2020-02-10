@@ -16,7 +16,7 @@
 
 set -e
 
-TF_VERSION="1.12.0"
+TF_VERSION="1.15.0"
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
