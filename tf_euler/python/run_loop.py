@@ -55,6 +55,7 @@ def define_network_embedding_flags():
 
   tf.flags.DEFINE_boolean('rr_reweight', False, 'Whether to reweight loss based on reciprocal rank.')
   tf.flags.DEFINE_boolean('enable_nce', False, 'Whether to use nce loss.')
+  tf.flags.DEFINE_boolean('norm_embedding', False, 'Whether to normalize embedding.')
   tf.flags.DEFINE_string('model', 'graphsage_supervised', 'Embedding model.')
   tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
   tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
@@ -251,6 +252,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
+        norm_embedding=flags_obj.norm_embedding,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
@@ -271,6 +273,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
+        norm_embedding=flags_obj.norm_embedding,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
@@ -292,6 +295,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
+        norm_embedding=flags_obj.norm_embedding,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
@@ -347,6 +351,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         rr_reweight=flags_obj.rr_reweight,
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
+        norm_embedding=flags_obj.norm_embedding,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':

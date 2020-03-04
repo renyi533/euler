@@ -56,6 +56,7 @@ class UnsupervisedModel(Model):
                switch_side=False,
                mrr_ema_ratio=0.991,
                temperature=1.0,
+               norm_embedding=False,
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -69,6 +70,7 @@ class UnsupervisedModel(Model):
     self.mrr_ema_ratio = mrr_ema_ratio
     self.enable_nce = enable_nce
     self.temperature = temperature
+    self.norm_embedding = norm_embedding
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -209,6 +211,7 @@ class UnsupervisedModel(Model):
     else:
       embedding = self.target_encoder(src)
       embedding_pos = self.context_encoder(pos)
+    
 
     negs_1d = tf.reshape(negs, [-1])
     uniq_negs, idx, counts = tf.unique_with_counts(negs_1d, 
@@ -232,6 +235,14 @@ class UnsupervisedModel(Model):
     self.pos_logQ = tf.reshape(pos_logQ, 
                                [tf.shape(embedding)[0],1,1]) 
 
+    if self.norm_embedding:
+      print('norm embedding')
+      embedding, _ = util_ops.normalize(embedding, axis=-1)
+      embedding_pos, _ = util_ops.normalize(embedding_pos, axis=-1)
+      embedding_negs, _ = util_ops.normalize(embedding_negs, axis=-1)
+    else:
+      print('disable norm embedding')
+
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
     if self.switch_side:
       print("switch target/context side within UnsupervisedModel")
@@ -239,6 +250,10 @@ class UnsupervisedModel(Model):
     else:
       print("Not switch target/context side within UnsupervisedModel")
       embedding = self.target_encoder(inputs)
+
+    if self.norm_embedding:
+      embedding, _ = util_ops.normalize(embedding, axis=-1)
+
     return ModelOutput(
         embedding=embedding, loss=loss, metric_name='mrr', metric=mrr)
 
