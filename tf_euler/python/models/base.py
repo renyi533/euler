@@ -212,12 +212,10 @@ class UnsupervisedModel(Model):
       embedding = self.target_encoder(src)
       embedding_pos = self.context_encoder(pos)
     
-
     negs_1d = tf.reshape(negs, [-1])
     uniq_negs, idx, counts = tf.unique_with_counts(negs_1d, 
                                                    out_idx=tf.int64)
 
-    
     pos_logQ, neg_logQ = self._nce_logits_logQ(tf.reshape(pos, [-1]), 
                                                uniq_negs, counts)
 
@@ -225,6 +223,14 @@ class UnsupervisedModel(Model):
       embedding_negs = self.target_encoder(uniq_negs)
     else:
       embedding_negs = self.context_encoder(uniq_negs)
+
+    if self.norm_embedding:
+      print('norm embedding')
+      embedding, _ = util_ops.normalize(embedding, axis=-1)
+      embedding_pos, _ = util_ops.normalize(embedding_pos, axis=-1)
+      embedding_negs, _ = util_ops.normalize(embedding_negs, axis=-1)
+    else:
+      print('disable norm embedding')
 
     embedding_negs = tf.gather(embedding_negs, idx, axis=0)
     embedding_negs = tf.reshape(embedding_negs,
@@ -234,14 +240,6 @@ class UnsupervisedModel(Model):
                                [tf.shape(embedding)[0],1,self.num_negs]) 
     self.pos_logQ = tf.reshape(pos_logQ, 
                                [tf.shape(embedding)[0],1,1]) 
-
-    if self.norm_embedding:
-      print('norm embedding')
-      embedding, _ = util_ops.normalize(embedding, axis=-1)
-      embedding_pos, _ = util_ops.normalize(embedding_pos, axis=-1)
-      embedding_negs, _ = util_ops.normalize(embedding_negs, axis=-1)
-    else:
-      print('disable norm embedding')
 
     loss, mrr = self.decoder(embedding, embedding_pos, embedding_negs)
     if self.switch_side:
