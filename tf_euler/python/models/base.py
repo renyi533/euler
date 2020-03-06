@@ -30,7 +30,6 @@ from tf_euler.python.euler_ops import util_ops
 ModelOutput = collections.namedtuple(
     'ModelOutput', ['embedding', 'loss', 'metric_name', 'metric'])
 
-
 class Model(layers.Layer):
   """
   """
@@ -57,6 +56,7 @@ class UnsupervisedModel(Model):
                mrr_ema_ratio=0.991,
                temperature=1.0,
                norm_embedding=False,
+               score_dims=[],
                **kwargs):
     super(UnsupervisedModel, self).__init__(**kwargs)
     self.node_type = node_type
@@ -71,6 +71,7 @@ class UnsupervisedModel(Model):
     self.enable_nce = enable_nce
     self.temperature = temperature
     self.norm_embedding = norm_embedding
+    self.score_dims = map(int, score_dims)
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -106,9 +107,43 @@ class UnsupervisedModel(Model):
         mrr = tf.assign_add(mrr_var, mrr_delta, use_locking=True)
     return mrr, tf.reshape(ranks[:, :, -1], [-1])
 
-  def decoder(self, embedding, embedding_pos, embedding_negs):
+  def compute_logits(self, embedding, embedding_pos, embedding_negs):
     logits = tf.matmul(embedding, embedding_pos, transpose_b=True)
     neg_logits = tf.matmul(embedding, embedding_negs, transpose_b=True)
+    if self.score_dims is None or len(self.score_dims) == 0:
+      print('compute_logits with inner product only')
+      return logits, neg_logits
+    
+    print('compute_logits deep layers:{}'.format(self.score_dims))
+    assert self.score_dims[-1] == 1
+    self.dense_layers = []
+    for i in range(len(self.score_dims)):
+      activation = tf.nn.relu if i < len(self.score_dims)-1 else None
+      l = layers.Dense(self.score_dims[i], activation=activation)
+      self.dense_layers.append(l)
+
+    pos_inputs = tf.concat([embedding, embedding_pos, \
+                       tf.multiply(embedding, embedding_pos)], axis=-1) 
+
+    embedding = tf.tile(embedding, [1, self.num_negs, 1])
+    neg_inputs = tf.concat([embedding, embedding_negs, \
+                       tf.multiply(embedding, embedding_negs)], axis=-1)
+    
+    dim = embedding.shape[2]
+    neg_outputs = tf.reshape(neg_inputs, [-1, 3*dim])
+    pos_outputs = tf.reshape(pos_inputs, [-1, 3*dim])
+
+    for i in range(len(self.dense_layers)):
+      neg_outputs = self.dense_layers[i](neg_outputs)
+      pos_outputs = self.dense_layers[i](pos_outputs)
+
+    neg_outputs = tf.reshape(neg_outputs, [-1, 1, self.num_negs])
+    pos_outputs = tf.reshape(pos_outputs, [-1, 1, 1])
+
+    return pos_outputs + logits, neg_outputs + neg_logits
+
+  def decoder(self, embedding, embedding_pos, embedding_negs):
+    logits, neg_logits = self.compute_logits(embedding, embedding_pos, embedding_negs)
     tf.summary.histogram('pos_logits', logits)
     tf.summary.histogram('neg_logits', neg_logits)
     if self.enable_nce:

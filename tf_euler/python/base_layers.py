@@ -75,8 +75,8 @@ class Dense(Layer):
                dim,
                activation=None,
                use_bias=True,
-               kernel_initializer=lambda: tf.uniform_unit_scaling_initializer(factor=0.36),
-               bias_initializer=lambda: tf.constant_initializer(value=0.0002),
+               kernel_initializer=lambda: tf.compat.v1.keras.initializers.he_normal(),
+               bias_initializer=lambda: tf.compat.v1.keras.initializers.Constant(value=0.0002),
                **kwargs):
     super(Dense, self).__init__(**kwargs)
     self.dim = dim

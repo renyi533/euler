@@ -71,6 +71,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_integer('right_win_size', 5, 'Right window size.')
   tf.flags.DEFINE_list('skip_len', [1,2], 'walklets skip len.')
   tf.flags.DEFINE_list('fanouts', [10, 10], 'GCN fanouts.')
+  tf.flags.DEFINE_list('score_dims', [], 'DNN dims to compute logits')
   tf.flags.DEFINE_enum('aggregator', 'mean',
                        ['gcn', 'mean', 'meanpool', 'maxpool', 'attention'],
                        'Sage aggregator.')
@@ -253,6 +254,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
         norm_embedding=flags_obj.norm_embedding,
+        score_dims=flags_obj.score_dims,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['randomwalk', 'deepwalk', 'node2vec']:
@@ -274,6 +276,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
         norm_embedding=flags_obj.norm_embedding,
+        score_dims=flags_obj.score_dims,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
@@ -296,6 +299,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
         norm_embedding=flags_obj.norm_embedding,
+        score_dims=flags_obj.score_dims,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model in ['gcn', 'gcn_supervised']:
@@ -352,6 +356,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         enable_nce=flags_obj.enable_nce,
         temperature=flags_obj.temperature,
         norm_embedding=flags_obj.norm_embedding,
+        score_dims=flags_obj.score_dims,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == 'graphsage_supervised':
