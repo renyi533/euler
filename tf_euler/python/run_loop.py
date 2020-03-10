@@ -60,6 +60,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_boolean('sigmoid_loss', True, 'Whether to use sigmoid loss.')
   tf.flags.DEFINE_boolean('share_negs', False, 'Whether to share negs in a mini-batch.')
   tf.flags.DEFINE_boolean('switch_side', False, 'Whether to use sigmoid loss.')
+  tf.flags.DEFINE_boolean('erase_id', False, 'Whether to erase the embedding from input ids.')
   tf.flags.DEFINE_string('unsupervised_loss', 'xent', 'Whether to use xent loss.')
   tf.flags.DEFINE_integer('dim', 256, 'Dimension of embedding.')
   tf.flags.DEFINE_integer('num_negs', 5, 'Number of negative samplings.')
@@ -232,6 +233,8 @@ def run_save_embedding(model, flags_obj, master, is_chief):
 
 def run_network_embedding(flags_obj, master, is_chief):
   fanouts = map(int, flags_obj.fanouts)
+  utils_context.erase_id = flags_obj.erase_id
+
   if flags_obj.mode == 'train':
     metapath = [map(int, flags_obj.train_edge_type)] * len(fanouts)
   else:

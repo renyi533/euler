@@ -57,7 +57,7 @@ class HashSparseEmbedding(SparseEmbedding):
 
 class HashEmbedding(Embedding):
   """
-  Sparse id to dense vector embedding with hashing.
+  id to dense vector embedding with hashing.
   """
   def __init__(
       self,
@@ -73,6 +73,7 @@ class HashEmbedding(Embedding):
     self.partition = partition
     self.use_locking = use_locking
     self.erase_hash = erase_hash
+    print('{} erase_hash:{}'.format(self._name, self.erase_hash))
   
   def call(self, inputs):
     in_shape = inputs.shape

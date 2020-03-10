@@ -101,7 +101,8 @@ class ShallowEncoder(layers.Layer):
     if use_id:
       embedding_class = \
           layers.HashEmbedding if use_hash_embedding[0] else layers.Embedding
-      self.embedding = embedding_class(max_id + 1, embedding_dim[0])
+      self.embedding = embedding_class(max_id + 1, embedding_dim[0], \
+                erase_hash=utils_context.erase_id)
       embedding_dim = embedding_dim[1:]
       use_hash_embedding = use_hash_embedding[1:]
     if use_sparse_feature:

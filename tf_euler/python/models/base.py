@@ -26,6 +26,7 @@ from tf_euler.python import layers
 from tf_euler.python import metrics
 from tf_euler.python.utils import embedding
 from tf_euler.python.euler_ops import util_ops
+from tf_euler.python.utils import context
 
 ModelOutput = collections.namedtuple(
     'ModelOutput', ['embedding', 'loss', 'metric_name', 'metric'])
@@ -76,6 +77,13 @@ class UnsupervisedModel(Model):
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
     src = tf.expand_dims(inputs, -1)
+    
+    if context.erase_id:
+      print('erase_id. set pos/negs to src')
+      pos = src
+      negs = tf.tile(pos, [1, self.num_negs])
+      return src, pos, negs
+
     pos = euler_ops.sample_neighbor(inputs, self.edge_type, 1)[0]
     negs = euler_ops.sample_node_with_src(tf.reshape(pos,[-1]),
                     self.num_negs, self.share_negs)
