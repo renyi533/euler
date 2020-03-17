@@ -154,6 +154,13 @@ class UnsupervisedModel(Model):
     logits, neg_logits = self.compute_logits(embedding, embedding_pos, embedding_negs)
     tf.summary.histogram('pos_logits', logits)
     tf.summary.histogram('neg_logits', neg_logits)
+
+    print('temperature: %f' % (self.temperature))
+    logits = logits / self.temperature
+    neg_logits = neg_logits / self.temperature
+    tf.summary.histogram('pos_logits_temperature', logits)
+    tf.summary.histogram('neg_logits_temperature', neg_logits)
+
     if self.enable_nce:
       print('enable nce')
       if self.loss_type == 'xent':
@@ -167,12 +174,6 @@ class UnsupervisedModel(Model):
       tf.summary.histogram('nce_neg_logits', neg_logits)
     else:
       print('disable nce')
-
-    print('temperature: %f' % (self.temperature))
-    logits = logits / self.temperature
-    neg_logits = neg_logits / self.temperature
-    tf.summary.histogram('pos_logits_temperature', logits)
-    tf.summary.histogram('neg_logits_temperature', neg_logits)
 
     mrr, ranks = self._mrr(logits, neg_logits)
     rr_weight = euler_ops.reciprocal_rank_weight(tf.reshape(ranks, [-1]))
