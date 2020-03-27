@@ -16,10 +16,12 @@ limitations under the License.
 #include "euler/core/graph_engine.h"
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <dirent.h>
 #include <unordered_set>
 #include <unordered_map>
 #include <iostream>
+#include <assert.h>
 
 #include "glog/logging.h"
 
@@ -83,6 +85,20 @@ bool GraphEngine::Initialize(std::unordered_map<std::string,
   std::vector<std::string> full_file_list =
       file_io_factory->ListFile(hdfs_addr, hdfs_port, directory,
                                 full_file_filter_fn);
+  
+  int retry_cnt = 0;
+  while (full_file_list.empty() && retry_cnt++ < 10) {
+    sleep(30);
+    LOG(INFO) << "list file retry: " << retry_cnt;
+
+    full_file_list = 
+      file_io_factory->ListFile(hdfs_addr, hdfs_port, directory,
+                                full_file_filter_fn);
+  }
+
+  assert(!full_file_list.empty());
+  LOG(INFO) << "found " << full_file_list.size()<< " files in dir: " << directory;
+
   // using shard idx and shard num to get the files that need to be loaded
   partition_num_ = 0;
   for (size_t i = 0; i < full_file_list.size(); ++i) {
@@ -107,10 +123,15 @@ bool GraphEngine::Initialize(std::unordered_map<std::string,
       }
     }
   }
+
   if (file_list.empty()) {
     LOG(ERROR) << "no file valid in dir: " << directory;
-    return false;
+    assert(false);
   }
+  else {
+    LOG(INFO) << "found " << file_list.size()<< " valid files in dir: " << directory;
+  }
+
   GraphFactory* graph_factory = nullptr;
   if (graph_type_ == compact) {
     graph_factory = new CompactGraphFactory();
