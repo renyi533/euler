@@ -29,8 +29,7 @@ void SampleNodeCallData::Proceed() {
                                       &responder_, cq_,
                                       cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new SampleNodeCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -57,8 +56,7 @@ void SampleEdgeCallData::Proceed() {
                                       &responder_, cq_,
                                       cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new SampleEdgeCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -88,8 +86,7 @@ void GetNodeTypeCallData::Proceed() {
                                        &responder_, cq_,
                                        cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetNodeTypeCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -116,8 +113,7 @@ void GetNodeFloat32FeatureCallData::Proceed() {
     async_service_->RequestGetNodeFloat32Feature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetNodeFloat32FeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -153,8 +149,7 @@ void GetNodeUInt64FeatureCallData::Proceed() {
     async_service_->RequestGetNodeUInt64Feature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-      new GetNodeUInt64FeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -190,8 +185,7 @@ void GetNodeBinaryFeatureCallData::Proceed() {
     async_service_->RequestGetNodeBinaryFeature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetNodeBinaryFeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -227,8 +221,7 @@ void GetEdgeFloat32FeatureCallData::Proceed() {
     async_service_->RequestGetEdgeFloat32Feature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetEdgeFloat32FeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -268,8 +261,7 @@ void GetEdgeUInt64FeatureCallData::Proceed() {
     async_service_->RequestGetEdgeUInt64Feature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetEdgeUInt64FeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -308,8 +300,7 @@ void GetEdgeBinaryFeatureCallData::Proceed() {
     async_service_->RequestGetEdgeBinaryFeature(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetEdgeBinaryFeatureCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -366,8 +357,7 @@ void GetFullNeighborCallData::Proceed() {
     async_service_->RequestGetFullNeighbor(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetFullNeighborCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -393,8 +383,7 @@ void GetSortedNeighborCallData::Proceed() {
     async_service_->RequestGetSortedNeighbor(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetSortedNeighborCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -420,8 +409,7 @@ void GetTopKNeighborCallData::Proceed() {
     async_service_->RequestGetTopKNeighbor(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new GetTopKNeighborCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing
@@ -448,8 +436,7 @@ void SampleNeighborCallData::Proceed() {
     async_service_->RequestSampleNeighbor(
         &ctx_, &request_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
-    CallData* call_data =
-        new SampleNeighborCallData(async_service_, cq_, graph_engine_);
+    CallData* call_data = Clone();
     call_data->Proceed();
 
     // The actual processing

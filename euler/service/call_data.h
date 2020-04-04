@@ -34,6 +34,7 @@ class CallData {
   }
 
   virtual void Proceed() = 0;
+  virtual CallData* Clone() = 0;
 
   virtual ~CallData() {}
 
@@ -59,8 +60,11 @@ class SampleNodeCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new SampleNodeCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::SampleNodeRequest request_;
 
@@ -78,8 +82,11 @@ class SampleEdgeCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new SampleEdgeCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::SampleEdgeRequest request_;
 
@@ -97,8 +104,11 @@ class GetNodeTypeCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetNodeTypeCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetNodeTypeRequest request_;
 
@@ -116,8 +126,11 @@ class GetNodeFloat32FeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetNodeFloat32FeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetNodeFloat32FeatureRequest request_;
 
@@ -136,8 +149,11 @@ class GetNodeUInt64FeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetNodeUInt64FeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetNodeUInt64FeatureRequest request_;
 
@@ -156,8 +172,11 @@ class GetNodeBinaryFeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetNodeBinaryFeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetNodeBinaryFeatureRequest request_;
 
@@ -176,8 +195,11 @@ class GetEdgeFloat32FeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetEdgeFloat32FeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetEdgeFloat32FeatureRequest request_;
 
@@ -196,8 +218,11 @@ class GetEdgeUInt64FeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetEdgeUInt64FeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetEdgeUInt64FeatureRequest request_;
 
@@ -216,8 +241,11 @@ class GetEdgeBinaryFeatureCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetEdgeBinaryFeatureCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetEdgeBinaryFeatureRequest request_;
 
@@ -236,8 +264,11 @@ class GetFullNeighborCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetFullNeighborCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetFullNeighborRequest request_;
 
@@ -255,8 +286,11 @@ class GetSortedNeighborCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetSortedNeighborCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetSortedNeighborRequest request_;
 
@@ -274,8 +308,11 @@ class GetTopKNeighborCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new GetTopKNeighborCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::GetTopKNeighborRequest request_;
 
@@ -293,8 +330,11 @@ class SampleNeighborCallData : public CallData {
       CallData(service, cq, graph_engine), responder_(&ctx_) {
   }
 
-  void Proceed();
+  void Proceed() override;
 
+  CallData* Clone() override {
+    return new SampleNeighborCallData(async_service_, cq_, graph_engine_);
+  }
  private:
   euler::proto::SampleNeighborRequest request_;
 

@@ -103,9 +103,23 @@ void GraphService::HandleRpcs(int32_t thread_idx) {
   void* tag;
   bool ok;
   while (true) {
+    // cq should not shutdown
     GPR_ASSERT(cq_list_[thread_idx]->Next(&tag, &ok));
-    GPR_ASSERT(ok);
-    static_cast<CallData*>(tag)->Proceed();
+
+    if (ok) {
+      static_cast<CallData*>(tag)->Proceed();
+    }
+    else {
+      if (tag == nullptr) continue;
+
+      call_data = static_cast<CallData*>(tag);
+
+      // operation level failure. allocate new data && free old
+      auto new_call_data = call_data->Clone();
+      new_call_data->Proceed();
+ 
+      delete call_data;
+    }
   }
 }
 
