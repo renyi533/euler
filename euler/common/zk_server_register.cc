@@ -19,6 +19,7 @@ limitations under the License.
 #include <vector>
 #include <string>
 #include <utility>
+#include <assert.h>
 
 #include "glog/logging.h"
 #include "euler/common/string_util.h"
@@ -66,6 +67,7 @@ bool ZkServerRegister::Initialize() {
                                     this, 0, ZkLogCallback);
     if (zh == nullptr) {
       LOG(ERROR) << "Fail to initialize ZK connection.";
+      assert(false);
       return false;
     }
     zk_handle_ = zh;
@@ -75,6 +77,7 @@ bool ZkServerRegister::Initialize() {
                       0, nullptr, 0);
   if (rc != ZOK && rc != ZNODEEXISTS) {
     LOG(ERROR) << "ZK error when creating root node: " << zerror(rc) << ".";
+    assert(false);
   }
 
   return true;
@@ -97,6 +100,7 @@ bool ZkServerRegister::RegisterShard(size_t shard_index, const Server &server,
                       &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, nullptr, 0);
   if (rc != ZOK) {
     LOG(ERROR) << "ZK error when creating meta: " << zerror(rc) << ".";
+    assert(false);
     return false;
   }
 
@@ -115,6 +119,7 @@ bool ZkServerRegister::DeregisterShard(size_t shard_index,
   int rc = zoo_delete(zk_handle_, shard_zk_path.c_str(), -1);
   if (rc != ZOK) {
     LOG(ERROR) << "ZK error when deleting meta: " << zerror(rc) << ".";
+    assert(false);
     return false;
   }
 
@@ -154,6 +159,7 @@ void ZkServerRegister::Watcher(zhandle_t *zh, int /*type*/, int state,
                             &ZOO_OPEN_ACL_UNSAFE, ZOO_EPHEMERAL, nullptr, 0);
         if (rc != ZOK) {
           LOG(ERROR) << "ZK error when creating meta: " << zerror(rc) << ".";
+          assert(false);
         }
       }
     }
