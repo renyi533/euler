@@ -19,6 +19,7 @@ limitations under the License.
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <assert.h>
 
 #include "glog/logging.h"
 
@@ -31,6 +32,7 @@ namespace common {
 template<class T>
 size_t RandomSelect(const std::vector<float>& sum_weights,
                     size_t begin_pos, size_t end_pos) {
+  assert(begin_pos <= end_pos && end_pos < sum_weights.size());
   float limit_begin = begin_pos == 0 ? 0 : sum_weights[begin_pos - 1];
   float limit_end = sum_weights[end_pos];
   float r = ThreadLocalRandom() * (limit_end - limit_begin) +
@@ -112,7 +114,15 @@ bool CompactWeightedCollection<T>::Init(
 
 template<class T>
 std::pair<T, float> CompactWeightedCollection<T>::Sample() const {
+  assert(sum_weights_.size() == ids_.size());
+  if (ids_.size() == 0 || sum_weights_.size() == 0) {
+    LOG(ERROR) << "sampling from empty CompactWeightedCollection. return default,0 pair";
+    std::pair<T, float> id_weight_pair(T(), 0);
+    return id_weight_pair;
+  }  
+
   size_t mid = RandomSelect<T>(sum_weights_, 0, ids_.size() - 1);
+  assert(mid >= 0 && mid < ids_.size());
   float pre_sum_weight = 0;
   if (mid > 0) {
     pre_sum_weight = sum_weights_[mid - 1];
