@@ -76,16 +76,22 @@ CompactNode::SampleNeighbor(
                         neighbor_groups_idx_[edge_type - 1];
       int32_t cur_idx = neighbor_groups_idx_[edge_type];
       if (cur_idx <= pre_idx) {
+        LOG(ERROR) << "specified edge type empty:"<< edge_type 
+             << ",node_id:"<<id_<<",node_type:"<<type_<<",node_weight:"<<weight_;
         return empty_vec;
       }
     } else if (edge_types.size() > 1 &&
                edge_types.size() < edge_group_collection_.GetSize()) {
       if (sub_edge_group_collection_.GetSumWeight() <= std::numeric_limits<float>::epsilon()) {
+        LOG(ERROR) << "sub edge type group weight sum to zero."
+             << ",node_id:"<<id_<<",node_type:"<<type_<<",node_weight:"<<weight_;
         return empty_vec;
       }
       edge_type = sub_edge_group_collection_.Sample().first;
     } else {  // sampling in all edge groups
       if (edge_group_collection_.GetSumWeight() <= std::numeric_limits<float>::epsilon()) {
+        LOG(ERROR) << "total edge type group weight sum to zero."
+             << ",node_id:"<<id_<<",node_type:"<<type_<<",node_weight:"<<weight_;
         return empty_vec;
       }
       edge_type = edge_group_collection_.Sample().first;
@@ -99,7 +105,7 @@ CompactNode::SampleNeighbor(
       LOG(ERROR) << "sampled empty edge type:"<< edge_type << ",begin:"<< interval_idx_begin 
              << ",end:"<<interval_idx_end<<",neighbors_weight_ size:"<<neighbors_weight_.size()
              << ",node_id:"<<id_<<",node_type:"<<type_<<",node_weight:"<<weight_;
-      vec[i] = std::make_tuple(-1, std::numeric_limits<float>::epsilon(), edge_type);
+      return empty_vec;
     }
     else {
       size_t mid = euler::common::RandomSelect<euler::common::NodeID>(
