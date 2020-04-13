@@ -185,6 +185,7 @@ std::vector<int32_t> GraphEngine::GetNodeType(
   for (size_t i = 0; i < node_ids.size(); ++i) {
     Node* node = graph_->GetNodeByID(node_ids[i]);
     if (node == nullptr) {
+      LOG(ERROR) << "GraphEngine::GetNodeType cannot find node:" << node_ids[i];
       types[i] = -1;
     } else {
       types[i] = node->GetType();
