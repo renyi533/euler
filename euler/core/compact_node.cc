@@ -20,6 +20,7 @@ limitations under the License.
 #include <algorithm>
 #include <queue>
 #include <sstream>
+#include <limits>
 #include <utility>
 
 #include "glog/logging.h"
@@ -79,12 +80,12 @@ CompactNode::SampleNeighbor(
       }
     } else if (edge_types.size() > 1 &&
                edge_types.size() < edge_group_collection_.GetSize()) {
-      if (sub_edge_group_collection_.GetSumWeight() == 0) {
+      if (sub_edge_group_collection_.GetSumWeight() <= std::numeric_limits<float>::epsilon()) {
         return empty_vec;
       }
       edge_type = sub_edge_group_collection_.Sample().first;
     } else {  // sampling in all edge groups
-      if (edge_group_collection_.GetSumWeight() == 0) {
+      if (edge_group_collection_.GetSumWeight() <= std::numeric_limits<float>::epsilon()) {
         return empty_vec;
       }
       edge_type = edge_group_collection_.Sample().first;
@@ -93,12 +94,21 @@ CompactNode::SampleNeighbor(
     int32_t interval_idx_begin = edge_type == 0 ? 0 :
                                  neighbor_groups_idx_[edge_type - 1];
     int32_t interval_idx_end = neighbor_groups_idx_[edge_type] - 1;
-    size_t mid = euler::common::RandomSelect<euler::common::NodeID>(
-        neighbors_weight_, interval_idx_begin, interval_idx_end);
-    float pre_sum_weight = mid <= 0 ? 0 : neighbors_weight_[mid - 1];
-    vec[i] = std::make_tuple(neighbors_[mid],
-                             neighbors_weight_[mid] - pre_sum_weight,
-                             edge_type);
+    
+    if (interval_idx_begin > interval_idx_end || interval_idx_end >= neighbors_weight_.size()) {
+      LOG(ERROR) << "sampled empty edge type:"<< edge_type << ",begin:"<< interval_idx_begin 
+             << ",end:"<<interval_idx_end<<",neighbors_weight_ size:"<<neighbors_weight_.size()
+             << ",node_id:"<<id_<<",node_type:"<<type_<<",node_weight:"<<weight_;
+      vec[i] = std::make_tuple(-1, std::numeric_limits<float>::epsilon(), edge_type);
+    }
+    else {
+      size_t mid = euler::common::RandomSelect<euler::common::NodeID>(
+          neighbors_weight_, interval_idx_begin, interval_idx_end);
+      float pre_sum_weight = mid <= 0 ? 0 : neighbors_weight_[mid - 1];
+      vec[i] = std::make_tuple(neighbors_[mid],
+                               neighbors_weight_[mid] - pre_sum_weight,
+                               edge_type);
+    }
   }
   return vec;
 }

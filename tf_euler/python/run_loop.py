@@ -234,12 +234,15 @@ def run_save_embedding(model, flags_obj, master, is_chief):
 def run_network_embedding(flags_obj, master, is_chief):
   fanouts = map(int, flags_obj.fanouts)
   utils_context.erase_id = flags_obj.erase_id
+  
 
   if flags_obj.mode == 'train':
     metapath = [map(int, flags_obj.train_edge_type)] * len(fanouts)
   else:
     metapath = [map(int, flags_obj.all_edge_type)] * len(fanouts)
-
+  
+  flags_obj.train_edge_type = map(int, flags_obj.train_edge_type)
+  flags_obj.all_edge_type = map(int, flags_obj.all_edge_type)
   print("use_hash_embedding:{}".format(flags_obj.use_hash_embedding))
 
   if flags_obj.model == 'line':

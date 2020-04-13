@@ -20,6 +20,7 @@ limitations under the License.
 #include <vector>
 #include <utility>
 #include <assert.h>
+#include <limits>
 
 #include "glog/logging.h"
 
@@ -35,6 +36,14 @@ size_t RandomSelect(const std::vector<float>& sum_weights,
   assert(begin_pos <= end_pos && end_pos < sum_weights.size());
   float limit_begin = begin_pos == 0 ? 0 : sum_weights[begin_pos - 1];
   float limit_end = sum_weights[end_pos];
+  float epsilon = std::numeric_limits<float>::epsilon();
+  
+  // empty set, reture first directly
+  if (limit_end - limit_begin <= epsilon) {
+    LOG(ERROR) << "RandomSelect: empty set. return first directly";
+    return begin_pos;
+  }
+
   float r = ThreadLocalRandom() * (limit_end - limit_begin) +
             limit_begin;
   size_t low = begin_pos, high = end_pos, mid = 0;
@@ -44,11 +53,27 @@ size_t RandomSelect(const std::vector<float>& sum_weights,
     float interval_begin = mid == 0 ? 0 : sum_weights[mid - 1];
     float interval_end = sum_weights[mid];
     if (interval_begin <= r && r < interval_end) {
-      finish = true;
+      if (interval_end - interval_begin > epsilon) {
+       finish = true;
+      }
+      break;
     } else if (interval_begin > r) {
       high = mid - 1;
     } else if (interval_end <= r) {
       low = mid + 1;
+    }
+  }
+  
+  if (finish) return mid;
+  
+  LOG(ERROR) << "RandomSelect: binary search failed. Linear search instead";
+  // no finish case, linear search first
+  for (size_t i = begin_pos; i <= end_pos; i++) {
+    float interval_begin = i == 0 ? 0 : sum_weights[i - 1];
+    float interval_end = sum_weights[i];
+    if (interval_end - interval_begin > epsilon) {
+      mid = i;
+      break;
     }
   }
   return mid;
@@ -115,7 +140,7 @@ bool CompactWeightedCollection<T>::Init(
 template<class T>
 std::pair<T, float> CompactWeightedCollection<T>::Sample() const {
   assert(sum_weights_.size() == ids_.size());
-  if (ids_.size() == 0 || sum_weights_.size() == 0) {
+  if (ids_.size() == 0 || sum_weight_ <= std::numeric_limits<float>::epsilon()) {
     LOG(ERROR) << "sampling from empty CompactWeightedCollection. return default,0 pair";
     std::pair<T, float> id_weight_pair(T(), 0);
     return id_weight_pair;
