@@ -77,7 +77,10 @@ class UnsupervisedModel(Model):
   def filter_sample(self, src, pos, negs):
     pos_1d = tf.reshape(pos, [-1])
     types = euler_ops.get_node_type(pos_1d)
+    src_1d = tf.reshape(src, [-1])
+    src_types = euler_ops.get_node_type(src_1d) 
     b_tensor = tf.equal(types, -1)
+    b_tensor = tf.logical_or(b_tensor, tf.equal(src_types, -1))
     i_tensor = tf.cast(b_tensor, dtype=tf.int32)
     src = tf.dynamic_partition(src, i_tensor, num_partitions=2)
     pos = tf.dynamic_partition(pos, i_tensor, num_partitions=2)
