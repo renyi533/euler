@@ -73,6 +73,18 @@ class UnsupervisedModel(Model):
     self.temperature = temperature
     self.norm_embedding = norm_embedding
     self.score_dims = map(int, score_dims)
+  
+  def filter_sample(self, src, pos, negs):
+    pos_1d = tf.reshape(pos, [-1])
+    types = euler_ops.get_node_type(pos_1d)
+    b_tensor = tf.equal(types, -1)
+    i_tensor = tf.cast(b_tensor, dtype=tf.int32)
+    src = tf.dynamic_partition(src, i_tensor, num_partitions=2)
+    pos = tf.dynamic_partition(pos, i_tensor, num_partitions=2)
+    negs = tf.dynamic_partition(negs, i_tensor, num_partitions=2)
+    return tf.reshape(src[0], [-1, 1]), \
+           tf.reshape(pos[0],[-1,1]), \
+           tf.reshape(negs[0], [-1, self.num_negs])
 
   def to_sample(self, inputs):
     batch_size = tf.size(inputs)
@@ -249,6 +261,7 @@ class UnsupervisedModel(Model):
         
   def call(self, inputs):
     src, pos, negs = self.to_sample(inputs)
+    src, pos, negs = self.filter_sample(src, pos, negs)
     if self.switch_side:
       embedding = self.context_encoder(src)
       embedding_pos = self.target_encoder(pos)

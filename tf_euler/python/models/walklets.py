@@ -98,7 +98,7 @@ class Walklets(base.UnsupervisedModel):
         inputs, [self.edge_type] * self.walk_len,
         p=self.walk_p,
         q=self.walk_q,
-        default_node=self.max_id + 1)
+        default_node=-1)
     pair, distance = euler_ops.gen_pair(path, self.left_win_size, self.right_win_size)
     pair = tf.reshape(pair, [-1, 2])
     distance = tf.reshape(distance, [-1])
