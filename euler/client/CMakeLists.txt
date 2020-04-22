@@ -1,6 +1,6 @@
 add_subdirectory(testing)
 #SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
-add_library(client SHARED
+add_library(client 
             graph.cc
             graph_config.cc
             grpc_channel.cc
@@ -11,7 +11,7 @@ add_library(client SHARED
             rpc_client.cc
             rpc_manager.cc
             status.cc)
-target_link_libraries(client common core proto glog jemalloc_STATIC_PIC)
+target_link_libraries(client common core proto glog)
 
 add_executable(graph_test graph_test.cc)
 target_link_libraries(graph_test client

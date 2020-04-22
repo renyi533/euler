@@ -54,12 +54,12 @@ add_library(tf_euler SHARED
             kernels/reciprocal_rank_weight_op.cc
             utils/create_graph.cc)
 
-target_link_libraries(tf_euler client common ${TF_FRAMEWORK} jemalloc_STATIC_PIC)
+target_link_libraries(tf_euler client common ${TF_FRAMEWORK})
 target_include_directories(tf_euler BEFORE PRIVATE ${TF_INC_DIR}
                            "${TF_INC_DIR}/external/nsync/public/")
 
 set(LIB_DST ${CMAKE_CURRENT_SOURCE_DIR}/python/euler_ops)
 add_custom_command(TARGET tf_euler POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:client> ${LIB_DST}
+  #COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:client> ${LIB_DST}
   COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:tf_euler> ${LIB_DST}
 )
