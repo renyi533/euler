@@ -70,6 +70,10 @@ void GetSortedFullNeighbor::ComputeAsync(
                 std::get<2>(result[i][j]));
           }
         }
+        
+        id_builder.set_batch_size(result.size());
+        weight_builder.set_batch_size(result.size());
+        type_builder.set_batch_size(result.size());
 
         // Set id sparse tensor
         (void) ctx->set_output("id_indices", id_builder.indices());

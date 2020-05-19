@@ -37,6 +37,10 @@ class SparseTensorBuilder {
     }
     values_.emplace_back(value);
   }
+  
+  void set_batch_size(int64 s) {
+    dense_shape_[0] = s;
+  }
 
   Tensor indices() {
     Tensor tensor(DT_INT64, {static_cast<int64>(indices_.size() / R), R});

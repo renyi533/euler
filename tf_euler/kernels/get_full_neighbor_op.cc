@@ -69,6 +69,10 @@ void GetFullNeighbor::ComputeAsync(OpKernelContext* ctx, DoneCallback done) {
           }
         }
 
+        id_builder.set_batch_size(result.size());
+        weight_builder.set_batch_size(result.size());
+        type_builder.set_batch_size(result.size());
+        
         // Set id sparse tensor
         (void) ctx->set_output("id_indices", id_builder.indices());
         (void) ctx->set_output("id_values", id_builder.values());
