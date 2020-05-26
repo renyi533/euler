@@ -137,7 +137,7 @@ public class BinaryDataGen {
       Job job = Job.getInstance(conf);
       job.setJarByClass(BinaryDataGen.class);
       job.setMapperClass(EulerMapper.class);
-      job.setCombinerClass(EulerReducer.class);
+      //job.setCombinerClass(EulerReducer.class);
       job.setReducerClass(EulerReducer.class);
       job.setOutputKeyClass(IntWritable.class);
       job.setOutputValueClass(BytesWritable.class);
