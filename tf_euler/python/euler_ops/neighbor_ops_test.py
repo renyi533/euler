@@ -84,11 +84,16 @@ class NeighborOpsTest(test.TestCase):
   def testGetTopKNeighbor(self):
     """Test get top k neighbor for nodes"""
     op = ops.get_top_k_neighbor([1, 2, 1], [0, 1], 2)
+    op2 = ops.get_top_k_neighbor([1, 2, 1], [0, 1], 1)
     with tf.Session() as sess:
       ids, weights, types = sess.run(op)
       self.assertAllEqual([[4, 3], [5, 3], [4, 3]], ids)
       self.assertAllClose([[4.0, 3.0], [5.0, 3.0], [4.0, 3.0]], weights)
       self.assertAllEqual([[0, 1], [1, 1], [0, 1]], types)
+      ids, weights, types = sess.run(op2)
+      self.assertAllEqual([[4], [5], [4]], ids)
+      self.assertAllClose([[4.0], [5.0], [4.0]], weights)
+      self.assertAllEqual([[0], [1], [0]], types)
 
   def testSampleNeighbor(self):
     """Test Sample Neighbor for nodes"""
