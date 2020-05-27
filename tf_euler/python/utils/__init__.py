@@ -21,3 +21,4 @@ from tf_euler.python.utils import context
 from tf_euler.python.utils import embedding
 from tf_euler.python.utils import flags
 from tf_euler.python.utils import hooks
+from tf_euler.python.utils import transformer_modules

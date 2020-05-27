@@ -66,6 +66,7 @@ def define_network_embedding_flags():
   tf.flags.DEFINE_integer('num_negs', 5, 'Number of negative samplings.')
   tf.flags.DEFINE_integer('order', 1, 'LINE order.')
   tf.flags.DEFINE_integer('walk_len', 5, 'Length of random walk path.')
+  tf.flags.DEFINE_integer('seq_layers', 1, 'rnn layers')
   tf.flags.DEFINE_float('walk_p', 1., 'Node2Vec return parameter.')
   tf.flags.DEFINE_float('walk_q', 1., 'Node2Vec in-out parameter.')
   tf.flags.DEFINE_integer('left_win_size', 5, 'Left window size.')
@@ -84,6 +85,7 @@ def define_network_embedding_flags():
                         'Max initial value of store.')
   tf.flags.DEFINE_integer('head_num', 1, 'multi head attention num')
 
+  tf.flags.DEFINE_string('seq_cell', 'lstm', '')
   tf.flags.DEFINE_string('model_dir', 'ckpt', 'Model checkpoint.')
   tf.flags.DEFINE_integer('batch_size', 512, 'Mini-batch size.')
   tf.flags.DEFINE_string('optimizer', 'adam', 'Optimizer to use.')
@@ -283,6 +285,22 @@ def run_network_embedding(flags_obj, master, is_chief):
         temperature=flags_obj.temperature,
         norm_embedding=flags_obj.norm_embedding,
         score_dims=flags_obj.score_dims,
+        use_hash_embedding=flags_obj.use_hash_embedding)
+
+  elif flags_obj.model == 'walk_seq_model':
+    model = models.WalkSeqModel(
+        node_type=flags_obj.all_node_type,
+        edge_type=flags_obj.all_edge_type,
+        max_id=flags_obj.max_id,
+        dim=flags_obj.dim,
+        num_negs=flags_obj.num_negs,
+        walk_len=flags_obj.walk_len,
+        walk_p=flags_obj.walk_p,
+        walk_q=flags_obj.walk_q,
+        loss_type=flags_obj.unsupervised_loss,
+        share_negs=flags_obj.share_negs,
+        cell=flags_obj.seq_cell,
+        cell_layers=flags_obj.seq_layers,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
