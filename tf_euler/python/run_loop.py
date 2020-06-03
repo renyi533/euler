@@ -301,6 +301,7 @@ def run_network_embedding(flags_obj, master, is_chief):
         share_negs=flags_obj.share_negs,
         cell=flags_obj.seq_cell,
         cell_layers=flags_obj.seq_layers,
+        score_dims=flags_obj.score_dims,
         use_hash_embedding=flags_obj.use_hash_embedding)
 
   elif flags_obj.model == "walklets":
